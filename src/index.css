@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #FAF5EE;
+    color: #201C1A;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  /* Custom Smooth Scrollbar with Brand Colors */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: #FAF5EE;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #E8D6C9;
+    border-radius: 9999px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: #DE4F3C;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
+
+/* Luxury animation subtleties */
+@keyframes scaleIn {
+  0% { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.animate-scale {
+  animation: scaleIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
