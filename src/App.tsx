@@ -5,7 +5,6 @@ import { StickyMobileOrderBar } from './components/layout/StickyMobileOrderBar';
 import { Hero } from './components/sections/Hero';
 import { ProductGrid } from './components/sections/ProductGrid';
 import { EditorialSpread } from './components/sections/EditorialSpread';
-import { FeaturedLook } from './components/sections/FeaturedLook';
 import { Benefits } from './components/sections/Benefits';
 import { Testimonials } from './components/sections/Testimonials';
 import { DirectOrderSection } from './components/sections/DirectOrderSection';
@@ -102,19 +101,13 @@ export const App: React.FC = () => {
           onSelectProduct={(prod) => setSelectedProduct(prod)}
         />
 
-        {/* SECTION 4: Asymmetric Magazine Spread "Curated For Her" */}
+        {/* SECTION 4: Brand Mission & Story Spread */}
         <EditorialSpread onExplore={() => scrollToOrderForm()} />
 
-        {/* SECTION 5: Spotlight Runway Look (Noir Tunic) */}
-        <FeaturedLook
-          product={products[1] || SEED_PRODUCTS[1]}
-          onQuickView={handleOpenQuickView}
-        />
-
-        {/* SECTION 6: Why Women Curator — Luxury Craft & Guarantee */}
+        {/* SECTION 5: Why Women Curator — Luxury Craft & Guarantee */}
         <Benefits />
 
-        {/* SECTION 7: Voices of the Muse — Customer Reviews */}
+        {/* SECTION 6: Voices of the Muse — Customer Reviews */}
         <div id="reviews">
           <Testimonials />
         </div>
