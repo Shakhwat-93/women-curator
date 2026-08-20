@@ -25,11 +25,11 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   const [quantity, setQuantity] = useState<number>(1);
 
   // Customer Form Fields
-  const [fullName, setFullName] = useState('Shakhwat hossain rasel');
-  const [phone, setPhone] = useState('01540400247');
-  const [address, setAddress] = useState('mahiganj Rangpur');
-  const [city, setCity] = useState<'Dhaka' | 'Outside'>('Outside');
-  const [postalCode, setPostalCode] = useState('5403');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [address, setAddress] = useState('');
+  const [city, setCity] = useState<'Dhaka' | 'Outside'>('Dhaka');
+  const [postalCode, setPostalCode] = useState('');
   const [notes, setNotes] = useState('');
   const [promoCode, setPromoCode] = useState('');
   const [appliedDiscount, setAppliedDiscount] = useState(0);
@@ -456,7 +456,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                           setFullName(e.target.value);
                           if (errors.fullName) setErrors(prev => ({ ...prev, fullName: undefined }));
                         }}
-                        placeholder="e.g. Shakhwat hossain rasel"
+                        placeholder="Enter your full name"
                         className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-white border text-xs font-mono focus:outline-none transition-all ${
                           errors.fullName ? 'border-curator-rose ring-1 ring-curator-rose' : 'border-curator-border focus:border-curator-coral'
                         }`}
@@ -483,7 +483,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                           setPhone(e.target.value);
                           if (errors.phone) setErrors(prev => ({ ...prev, phone: undefined }));
                         }}
-                        placeholder="e.g. 01540400247"
+                        placeholder="01XXXXXXXXX"
                         className={`w-full pl-10 pr-4 py-3 rounded-2xl bg-white border text-xs font-mono focus:outline-none transition-all ${
                           errors.phone ? 'border-curator-rose ring-1 ring-curator-rose' : 'border-curator-border focus:border-curator-coral'
                         }`}
@@ -553,7 +553,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                             setAddress(e.target.value);
                             if (errors.address) setErrors(prev => ({ ...prev, address: undefined }));
                           }}
-                          placeholder="e.g. mahiganj Rangpur"
+                          placeholder="House/Flat #, Road/Street, Area, District/Thana"
                           className={`w-full pl-10 pr-4 py-2.5 rounded-2xl bg-white border text-xs font-mono focus:outline-none resize-none transition-all ${
                             errors.address ? 'border-curator-rose ring-1 ring-curator-rose' : 'border-curator-border focus:border-curator-coral'
                           }`}
@@ -574,7 +574,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                         type="text"
                         value={postalCode}
                         onChange={e => setPostalCode(e.target.value)}
-                        placeholder="5403"
+                        placeholder="e.g. 1205"
                         className="w-full px-4 py-3 rounded-2xl bg-white border border-curator-border text-xs font-mono focus:outline-none focus:border-curator-coral transition-all"
                       />
                     </div>
