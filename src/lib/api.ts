@@ -141,7 +141,8 @@ export const orderService = {
         .from('orders')
         .select(`
           *,
-          items:order_items(*)
+          items:order_items(*),
+          courier_check:courier_check_cache(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -161,7 +162,8 @@ export const orderService = {
         .from('orders')
         .select(`
           *,
-          items:order_items(*)
+          items:order_items(*),
+          courier_check:courier_check_cache(*)
         `)
         .eq('id', id)
         .single();
@@ -259,6 +261,17 @@ export const orderService = {
         ...insertedOrder,
         items: createdItems
       };
+
+      // Asynchronous background courier check (without blocking customer checkout)
+      if (fullOrder.phone) {
+        import('./bdCourier').then(({ bdCourierService }) => {
+          bdCourierService.checkCustomerCourier(fullOrder.phone, {
+            orderId: fullOrder.id || fullOrder.order_number
+          }).catch(err => {
+            console.warn('Background courier check failed:', err);
+          });
+        });
+      }
 
       // Sync local backup
       const current = JSON.parse(localStorage.getItem('women_curator_orders') || '[]');

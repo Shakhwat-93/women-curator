@@ -19,6 +19,7 @@ import {
 import { Order, OrderStatus } from '../../types';
 import { useAdminToast } from '../context/AdminToastContext';
 import { steadfastService } from '../../lib/steadfast';
+import { CustomerCourierHistoryCard } from '../components/CustomerCourierHistoryCard';
 
 interface OrderDetailDrawerProps {
   order: Order | null;
@@ -490,6 +491,27 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
                 </div>
               )}
             </div>
+
+            {/* BD COURIER CUSTOMER HISTORY & RISK ASSESSMENT CARD */}
+            <CustomerCourierHistoryCard
+              phone={order.phone}
+              orderId={order.id || order.order_number}
+              initialData={order.courier_check}
+              onRefreshSuccess={freshCheck => {
+                setOrder(prev =>
+                  prev
+                    ? {
+                        ...prev,
+                        courier_check: freshCheck,
+                        courier_risk_level: freshCheck.risk_level,
+                        courier_success_ratio: freshCheck.summary_success_ratio,
+                        courier_total_parcels: freshCheck.summary_total_parcel
+                      }
+                    : null
+                );
+                if (onOrderUpdated) onOrderUpdated();
+              }}
+            />
 
             {/* Ordered Garments */}
             <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-3">

@@ -8,7 +8,10 @@ import {
   ShoppingBag,
   ChevronRight,
   RefreshCw,
-  Truck
+  Truck,
+  ShieldCheck,
+  ShieldAlert,
+  AlertTriangle
 } from 'lucide-react';
 import { orderService } from '../../lib/api';
 import { Order, OrderStatus } from '../../types';
@@ -21,6 +24,7 @@ export const OrdersPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | OrderStatus>('all');
+  const [riskFilter, setRiskFilter] = useState<'all' | 'low' | 'medium' | 'high' | 'unknown'>('all');
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
 
   const { success, error } = useAdminToast();
@@ -78,7 +82,7 @@ export const OrdersPage: React.FC = () => {
 
   const exportCSV = () => {
     if (orders.length === 0) return;
-    const headers = ['Order Number', 'Date', 'Customer Name', 'Phone', 'City', 'Total (BDT)', 'Status', 'Payment'];
+    const headers = ['Order Number', 'Date', 'Customer Name', 'Phone', 'City', 'Total (BDT)', 'Status', 'Payment', 'Courier Risk', 'Success Ratio'];
     const rows = filteredOrders.map(o => [
       o.order_number,
       o.created_at ? new Date(o.created_at).toLocaleDateString() : '',
@@ -87,7 +91,9 @@ export const OrdersPage: React.FC = () => {
       `"${o.city}"`,
       o.total,
       o.status,
-      `"${o.payment_method}"`
+      `"${o.payment_method}"`,
+      o.courier_risk_level || 'unknown',
+      o.courier_success_ratio ? `${o.courier_success_ratio}%` : ''
     ]);
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
@@ -109,8 +115,9 @@ export const OrdersPage: React.FC = () => {
       o.city.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === 'all' ? true : o.status === statusFilter;
+    const matchesRisk = riskFilter === 'all' ? true : (o.courier_risk_level || 'unknown') === riskFilter;
 
-    return matchesQuery && matchesStatus;
+    return matchesQuery && matchesStatus && matchesRisk;
   });
 
   return (
@@ -186,6 +193,31 @@ export const OrdersPage: React.FC = () => {
             );
           })}
         </div>
+
+        {/* Courier Risk Filters Sub-row */}
+        <div className="pt-2 border-t border-curator-border/50 flex items-center gap-2 overflow-x-auto">
+          <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-curator-muted whitespace-nowrap">
+            BD Courier Risk:
+          </span>
+          {(['all', 'low', 'medium', 'high', 'unknown'] as const).map(rk => {
+            const count = rk === 'all' ? orders.length : orders.filter(o => (o.courier_risk_level || 'unknown') === rk).length;
+            return (
+              <button
+                key={rk}
+                type="button"
+                onClick={() => setRiskFilter(rk)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-mono whitespace-nowrap transition-all flex items-center gap-1 ${
+                  riskFilter === rk
+                    ? 'bg-curator-charcoal text-white font-bold'
+                    : 'bg-white text-curator-muted hover:text-curator-charcoal border border-curator-border/80'
+                }`}
+              >
+                <span className="capitalize">{rk}</span>
+                <span className="text-[9px] opacity-75">({count})</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Orders List Container */}
@@ -242,7 +274,19 @@ export const OrdersPage: React.FC = () => {
                   <div>
                     <h4 className="font-bold text-xs text-curator-charcoal">{order.customer_name}</h4>
                     <p className="text-[11px] text-curator-muted font-mono">{order.city} • {order.phone}</p>
-                    <p className="text-[10px] text-curator-muted mt-0.5">{order.items?.length || 1} item(s)</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-curator-muted">{order.items?.length || 1} item(s)</span>
+                      {order.courier_risk_level === 'low' && (
+                        <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded-full">
+                          ● {order.courier_success_ratio || 0}% Low Risk
+                        </span>
+                      )}
+                      {order.courier_risk_level === 'high' && (
+                        <span className="text-[9px] font-mono font-bold text-rose-700 bg-rose-50 px-1.5 py-0.2 rounded-full">
+                          ● {order.courier_success_ratio || 0}% High Risk
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   <div className="text-right">
@@ -278,6 +322,7 @@ export const OrdersPage: React.FC = () => {
                   <th className="py-3.5 px-6 font-semibold">Order</th>
                   <th className="py-3.5 px-4 font-semibold">Customer</th>
                   <th className="py-3.5 px-4 font-semibold">Delivery City</th>
+                  <th className="py-3.5 px-4 font-semibold">Courier Risk</th>
                   <th className="py-3.5 px-4 font-semibold">Items</th>
                   <th className="py-3.5 px-4 font-semibold">Total Amount</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
@@ -307,6 +352,29 @@ export const OrdersPage: React.FC = () => {
                     <td className="py-4 px-4 text-curator-charcoal font-medium">
                       {order.city}
                       {order.area && <span className="text-[10px] text-curator-muted block font-mono">{order.area}</span>}
+                    </td>
+
+                    <td className="py-4 px-4">
+                      {order.courier_risk_level === 'low' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 font-mono text-[10px] font-bold whitespace-nowrap">
+                          <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                          <span>{order.courier_success_ratio || 0}% Low Risk</span>
+                        </span>
+                      ) : order.courier_risk_level === 'medium' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-mono text-[10px] font-bold whitespace-nowrap">
+                          <AlertTriangle className="w-3 h-3 text-amber-600" />
+                          <span>{order.courier_success_ratio || 0}% Med Risk</span>
+                        </span>
+                      ) : order.courier_risk_level === 'high' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 font-mono text-[10px] font-bold whitespace-nowrap">
+                          <ShieldAlert className="w-3 h-3 text-rose-600" />
+                          <span>{order.courier_success_ratio || 0}% High Risk</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-curator-muted font-mono whitespace-nowrap">
+                          No History
+                        </span>
+                      )}
                     </td>
 
                     <td className="py-4 px-4 font-mono text-curator-muted">

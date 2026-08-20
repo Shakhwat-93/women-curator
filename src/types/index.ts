@@ -120,6 +120,70 @@ export interface Order {
   courier_status?: string;
   courier_sent_at?: string;
   courier_response?: any;
+  courier_check_id?: string;
+  courier_success_ratio?: number;
+  courier_risk_level?: 'low' | 'medium' | 'high' | 'unknown';
+  courier_total_parcels?: number;
+  courier_check?: CourierCheckResult;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export type CourierRiskLevel = 'low' | 'medium' | 'high' | 'unknown';
+
+export interface CourierSummary {
+  total_parcel: number;
+  success_parcel: number;
+  cancelled_parcel: number;
+  success_ratio: number;
+}
+
+export interface CourierBreakdownItem {
+  name: string;
+  logo?: string;
+  total_parcel: number;
+  success_parcel: number;
+  cancelled_parcel: number;
+  success_ratio: number;
+}
+
+export interface CourierReport {
+  courier?: string;
+  report?: string;
+  details?: string;
+  date?: string;
+  reason?: string;
+  status?: string;
+}
+
+export interface CourierCheckResult {
+  id?: string;
+  phone: string;
+  status: 'checked' | 'pending' | 'failed' | 'expired' | 'no_data';
+  summary_total_parcel: number;
+  summary_success_parcel: number;
+  summary_cancelled_parcel: number;
+  summary_success_ratio: number;
+  risk_level: CourierRiskLevel;
+  couriers: Record<string, CourierBreakdownItem>;
+  reports: CourierReport[];
+  raw_response?: any;
+  last_error?: string;
+  retry_count?: number;
+  checked_at: string;
+  expires_at: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BdCourierSettings {
+  id?: string;
+  is_enabled: boolean;
+  api_key: string;
+  base_url: string;
+  cache_duration_days: number;
+  auto_check_new_orders: boolean;
+  max_retries: number;
   created_at?: string;
   updated_at?: string;
 }
