@@ -255,8 +255,8 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                   </label>
                   
                   {/* Product Cards Selector Tabs */}
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {products.slice(0, 4).map((prod) => {
+                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                    {products.filter(p => p.status !== 'archived' && p.is_active !== false).map((prod) => {
                       const isCurrent = selectedProduct.id === prod.id;
                       return (
                         <button

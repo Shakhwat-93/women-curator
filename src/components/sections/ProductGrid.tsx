@@ -17,6 +17,9 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
   onQuickView,
   onDirectOrder
 }) => {
+  // Only show active products
+  const activeProducts = products.filter(p => p.status !== 'archived' && p.is_active !== false);
+
   return (
     <section id="products" className="py-16 sm:py-24 bg-[#FAF5EE] relative overflow-hidden">
       {/* Decorative subtle ambient glows */}
@@ -36,20 +39,20 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
           </h2>
 
           <p className="text-xs sm:text-sm text-curator-muted font-sans mt-3 max-w-md mx-auto leading-relaxed">
-            Four exclusive tunics crafted with fluted cuts, signature embroidery, and effortless modern drapery.
+            Exclusive tunics and fashion drops crafted with signature embroidery, fluted cuts, and effortless modern drapery.
           </p>
         </div>
 
-        {/* 4-Column Product Grid */}
+        {/* Responsive Product Grid — Displays ALL Active Products */}
         {isLoading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-6 lg:gap-7">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-6 lg:gap-7">
             {[0, 1, 2, 3].map(i => (
               <ProductCardSkeleton key={i} />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-6 lg:gap-7">
-            {products.slice(0, 4).map((product, idx) => (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-6 lg:gap-7">
+            {activeProducts.map((product, idx) => (
               <ProductCard
                 key={product.id}
                 product={product}

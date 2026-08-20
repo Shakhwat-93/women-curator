@@ -167,7 +167,7 @@ export const Hero: React.FC<HeroProps> = ({ slides = DEFAULT_SLIDES, onShopColle
               className="py-3.5 px-4 rounded-full bg-white text-curator-charcoal border border-curator-border font-sans text-xs font-semibold shadow-sm hover:bg-curator-surface-peach active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-curator-coral" />
-              <span>{slide.secondary_cta_text || 'View 4 Drops'}</span>
+              <span>{slide.secondary_cta_text || 'View Collection'}</span>
             </button>
           </div>
         </div>
@@ -261,7 +261,7 @@ export const Hero: React.FC<HeroProps> = ({ slides = DEFAULT_SLIDES, onShopColle
                 className="inline-flex items-center gap-2 py-4 px-6 rounded-full bg-white/90 hover:bg-white text-curator-charcoal hover:text-curator-coral text-xs font-semibold border border-curator-border shadow-sm transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5 text-curator-coral" />
-                <span>{slide.secondary_cta_text || 'View 4 Drops'}</span>
+                <span>{slide.secondary_cta_text || 'View Collection'}</span>
               </button>
             </div>
           </motion.div>
