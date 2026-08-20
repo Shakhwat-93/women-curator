@@ -13,29 +13,28 @@ const HERO_SLIDES = [
     id: 1,
     image: '/assets/hero-banner-3models.jpg',
     title: 'New Drop 2026',
-    subtitle: 'Autumn 3-Muse Editorial Capsule',
-    tag: 'Capsule Edition'
+    subtitle: 'Style • Comfort • Quality • Affordability',
+    tag: 'New Collection'
   },
   {
     id: 2,
     image: '/assets/model-magenta-banner.jpg',
     title: 'Embroidered Flare Tunic',
-    subtitle: 'Magenta Modal Silk Signature',
-    tag: 'Best Seller'
+    subtitle: 'Effortlessly Beautiful & Comfortable',
+    tag: 'Trending'
   },
   {
     id: 3,
     image: '/assets/model-black-banner.jpg',
     title: 'Monochrome Noir Tunic',
-    subtitle: 'Heritage Geometric Cuffs',
-    tag: 'Exclusive Drop'
+    subtitle: 'Carefully Curated Details',
+    tag: 'Exclusive'
   }
 ];
 
 export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) => {
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  // Auto Slider Timer
   useEffect(() => {
     const timer = setInterval(() => {
       setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
@@ -55,7 +54,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
 
   return (
     <section className="relative pt-16 sm:pt-24 pb-8 sm:pb-12 overflow-hidden bg-gradient-to-b from-[#FAF5EE] via-[#FAF5EE] to-[#F5EBE0]">
-      {/* Background Signature Organic Blobs & Shadows */}
+      {/* Background Signature Organic Geometry */}
       <OrganicBackground
         variant="hero"
         showDots={true}
@@ -66,13 +65,12 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
 
       <div className="relative max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 z-10">
         
-        {/* ─── MOBILE VIEW: HERO AUTO SLIDER ONLY (NO DUPLICATE TEXT) ─── */}
+        {/* ─── MOBILE VIEW: HERO AUTO SLIDER ─── */}
         <div className="block lg:hidden">
           <div
             onClick={onDirectOrder}
             className="relative w-full rounded-[2rem] overflow-hidden shadow-2xl border border-white/80 bg-white cursor-pointer group"
           >
-            {/* Image Slider Stage */}
             <div className="relative w-full aspect-[16/10.5] overflow-hidden bg-[#FDFBF7]">
               <AnimatePresence mode="wait">
                 <motion.img
@@ -87,7 +85,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                 />
               </AnimatePresence>
 
-              {/* Prev / Next touch controls */}
+              {/* Prev / Next controls */}
               <button
                 onClick={handlePrev}
                 aria-label="Previous slide"
@@ -132,7 +130,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
             </div>
           </div>
 
-          {/* Quick Action Buttons on Mobile below Banner */}
+          {/* Quick Action Buttons */}
           <div className="mt-4 grid grid-cols-2 gap-2.5">
             <button
               onClick={onDirectOrder}
@@ -153,16 +151,16 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
           </div>
         </div>
 
-        {/* ─── DESKTOP VIEW: EDITORIAL SPLIT WITH AUTO SLIDER ─── */}
+        {/* ─── DESKTOP VIEW: EDITORIAL SPLIT ─── */}
         <div className="hidden lg:grid grid-cols-12 gap-8 items-center">
-          {/* Left Column: Hero Editorial Typography (5 cols) */}
+          {/* Left Column: Brand Story & Headline (5 cols) */}
           <motion.div
             initial={{ opacity: 0, x: -30 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-            className="col-span-5 text-left z-20 space-y-6"
+            className="col-span-5 text-left z-20 space-y-5"
           >
-            {/* Top Brand Subtitle */}
+            {/* Brand Pill */}
             <div className="inline-flex items-center gap-2">
               <span className="font-serif text-lg text-curator-charcoal tracking-wide">
                 Women
@@ -173,17 +171,17 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               </span>
             </div>
 
-            {/* Main Headline: "New Drop" with High-Fashion Serif */}
+            {/* Main Headline */}
             <div className="space-y-0">
-              <h1 className="font-serif text-6xl xl:text-[5.4rem] leading-[0.95] tracking-tight text-curator-charcoal">
+              <h1 className="font-serif text-6xl xl:text-[5.2rem] leading-[0.95] tracking-tight text-curator-charcoal">
                 New{' '}
                 <span className="text-curator-coral font-serif font-bold inline-block hover:scale-[1.02] transition-transform">
                   Drop
                 </span>
               </h1>
 
-              {/* Signature Accent Script: "own the Vibe" */}
-              <div className="pt-3">
+              {/* Accent Script: "own the Vibe" */}
+              <div className="pt-2">
                 <div className="relative inline-block">
                   <span className="font-script text-5xl xl:text-6xl text-curator-charcoal font-normal tracking-wide">
                     own the{' '}
@@ -192,7 +190,6 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                     </span>
                   </span>
 
-                  {/* Stylized Red Brush Curve Underline */}
                   <svg
                     className="w-full h-5 text-curator-coral -mt-1"
                     viewBox="0 0 200 20"
@@ -210,13 +207,25 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               </div>
             </div>
 
-            {/* Campaign Subtitle */}
-            <p className="text-sm text-curator-muted max-w-md font-sans leading-relaxed pt-1">
-              An exclusive capsule of handcrafted silk-modal tunics, refined fluted silhouettes, and artisanal embroidery tailored for effortless modern styling.
+            {/* Official Brand Description */}
+            <p className="text-xs sm:text-sm text-curator-muted max-w-md font-sans leading-relaxed pt-1">
+              Women Curator is a fashion brand dedicated to bringing modern women stylish, elegant, and comfortable clothing at affordable prices. We carefully curate trendy designs with quality fabrics and thoughtful details, making everyday fashion effortlessly beautiful.
             </p>
 
+            {/* 4 Pillars Badge */}
+            <div className="inline-flex items-center gap-2 py-1.5 px-4 rounded-full bg-curator-surface-peach/80 border border-curator-border text-xs font-semibold text-curator-charcoal">
+              <span className="text-curator-coral font-bold">•</span>
+              <span>Style</span>
+              <span className="text-curator-coral font-bold">•</span>
+              <span>Comfort</span>
+              <span className="text-curator-coral font-bold">•</span>
+              <span>Quality</span>
+              <span className="text-curator-coral font-bold">•</span>
+              <span>Affordability</span>
+            </div>
+
             {/* Call to Action Buttons */}
-            <div className="pt-4 flex items-center gap-3.5">
+            <div className="pt-3 flex items-center gap-3.5">
               <button
                 onClick={onDirectOrder}
                 className="bg-curator-coral text-white font-sans text-sm font-bold tracking-wide py-4 px-8 rounded-full shadow-lg hover:shadow-curator-glow hover:bg-curator-coral-hover active:scale-[0.98] transition-all duration-300 flex items-center gap-2.5 group"
@@ -233,24 +242,6 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                 <Sparkles className="w-3.5 h-3.5 text-curator-coral" />
                 <span>View 4 Drops</span>
               </button>
-            </div>
-
-            {/* Trust Metrics */}
-            <div className="pt-4 flex items-center gap-6 text-xs text-curator-muted border-t border-curator-border/60">
-              <div>
-                <span className="font-serif text-base font-bold text-curator-charcoal block">100%</span>
-                <span className="text-[11px]">Premium Silk-Modal</span>
-              </div>
-              <div className="h-6 w-px bg-curator-border" />
-              <div>
-                <span className="font-serif text-base font-bold text-curator-charcoal block">Cash on</span>
-                <span className="text-[11px]">Delivery Nationwide</span>
-              </div>
-              <div className="h-6 w-px bg-curator-border" />
-              <div>
-                <span className="font-mono text-base font-bold text-curator-coral block">24-48h</span>
-                <span className="text-[11px]">Express Dispatch</span>
-              </div>
             </div>
           </motion.div>
 
