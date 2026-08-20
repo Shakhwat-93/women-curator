@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
@@ -10,25 +10,49 @@ import {
   Clock,
   Package,
   Truck,
-  Check
+  Check,
+  Send,
+  ExternalLink,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
 import { useAdminToast } from '../context/AdminToastContext';
+import { steadfastService } from '../../lib/steadfast';
 
 interface OrderDetailDrawerProps {
   order: Order | null;
   isOpen: boolean;
   onClose: () => void;
   onUpdateStatus: (orderId: string, status: OrderStatus) => Promise<void>;
+  onOrderUpdated?: () => void;
 }
 
 export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
-  order,
+  order: initialOrder,
   isOpen,
   onClose,
-  onUpdateStatus
+  onUpdateStatus,
+  onOrderUpdated
 }) => {
-  const { success } = useAdminToast();
+  const [order, setOrder] = useState<Order | null>(initialOrder);
+  const [isSendingToCourier, setIsSendingToCourier] = useState(false);
+  const [isCheckingCourierStatus, setIsCheckingCourierStatus] = useState(false);
+  const [showCourierCustomizer, setShowCourierCustomizer] = useState(false);
+  const [courierNote, setCourierNote] = useState('');
+  const [courierDeliveryType, setCourierDeliveryType] = useState<number>(0);
+  const [courierCod, setCourierCod] = useState<number>(0);
+
+  const { success, error, info } = useAdminToast();
+
+  React.useEffect(() => {
+    setOrder(initialOrder);
+    if (initialOrder) {
+      const isCod = initialOrder.payment_method?.toLowerCase().includes('cash') || !initialOrder.payment_method;
+      setCourierCod(isCod ? Number(initialOrder.total) || 0 : 0);
+      setCourierNote(initialOrder.notes || 'Please handle with care. Women Curator parcel.');
+    }
+  }, [initialOrder]);
 
   if (!order || !isOpen) return null;
 
@@ -60,6 +84,60 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleSendToSteadfast = async () => {
+    setIsSendingToCourier(true);
+    try {
+      const res = await steadfastService.sendOrder(order, {
+        note: courierNote,
+        deliveryType: courierDeliveryType,
+        customCod: courierCod
+      });
+
+      if (res.success && res.consignment) {
+        success(`Consignment created on Steadfast! Tracking Code: ${res.trackingCode}`);
+        setOrder(prev =>
+          prev
+            ? {
+                ...prev,
+                courier_provider: 'steadfast',
+                courier_consignment_id: res.consignment!.consignment_id,
+                courier_tracking_code: res.consignment!.tracking_code,
+                courier_status: res.consignment!.status || 'in_review',
+                status: 'shipped'
+              }
+            : null
+        );
+        setShowCourierCustomizer(false);
+        if (onOrderUpdated) onOrderUpdated();
+      } else {
+        error(res.error || 'Failed to dispatch order to Steadfast Courier');
+      }
+    } catch (e: any) {
+      error(e.message || 'Error connecting to Steadfast');
+    } finally {
+      setIsSendingToCourier(false);
+    }
+  };
+
+  const handleRefreshCourierStatus = async () => {
+    if (!order.courier_tracking_code) return;
+    setIsCheckingCourierStatus(true);
+    try {
+      const res = await steadfastService.checkDeliveryStatus(order.courier_tracking_code);
+      if (res.success && res.status) {
+        info(`Steadfast Status: ${res.status}`);
+        setOrder(prev => (prev ? { ...prev, courier_status: res.status } : null));
+        if (onOrderUpdated) onOrderUpdated();
+      } else {
+        error(res.error || 'Could not fetch live status');
+      }
+    } catch {
+      error('Failed to check courier status');
+    } finally {
+      setIsCheckingCourierStatus(false);
+    }
   };
 
   return (
@@ -125,55 +203,50 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
               <button
                 type="button"
                 onClick={onClose}
-                className="p-2 rounded-full border border-curator-border hover:bg-curator-surface-peach text-curator-muted hover:text-curator-charcoal transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+                aria-label="Close drawer"
+                className="p-2 rounded-full border border-curator-border hover:bg-rose-50 hover:text-rose-600 text-curator-charcoal transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
           </div>
 
-          {/* Drawer Content */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-            
-            {/* Status Timeline Stepper */}
+          {/* Body Content (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+            {/* 5-Stage Status Stepper */}
             <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-3">
-              <span className="text-[10px] font-bold tracking-widest text-curator-muted font-mono uppercase block">
-                Order Pipeline Progress
-              </span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold tracking-widest text-curator-muted font-mono uppercase">
+                  Order Status Pipeline
+                </span>
+                <span className="text-xs font-serif font-bold text-curator-coral">
+                  {statuses[currentIdx]?.label || order.status}
+                </span>
+              </div>
 
-              <div className="grid grid-cols-5 gap-1 text-center">
-                {statuses.map((st, idx) => {
-                  const isDone = idx <= currentIdx && order.status !== 'cancelled';
-                  const isCurrent = idx === currentIdx && order.status !== 'cancelled';
+              {/* Progress Line */}
+              <div className="grid grid-cols-5 gap-1.5 pt-1">
+                {statuses.map((s, idx) => {
+                  const Icon = s.icon;
+                  const isPassed = idx <= currentIdx;
+                  const isCurrent = idx === currentIdx;
 
                   return (
                     <button
-                      key={st.key}
+                      key={s.key}
                       type="button"
-                      onClick={() => onUpdateStatus(order.id || order.order_number, st.key)}
-                      className="group flex flex-col items-center gap-1 focus:outline-none min-h-[52px]"
+                      onClick={() => onUpdateStatus(order.id || order.order_number, s.key)}
+                      className={`flex flex-col items-center gap-1.5 p-2 rounded-2xl transition-all ${
+                        isCurrent
+                          ? 'bg-curator-coral text-white shadow-xs font-bold scale-[1.03]'
+                          : isPassed
+                          ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 font-semibold'
+                          : 'bg-[#FAF5EE] text-curator-muted hover:bg-curator-surface-peach'
+                      }`}
                     >
-                      <div
-                        className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                          isCurrent
-                            ? 'bg-curator-coral text-white ring-4 ring-curator-coral-light shadow-sm'
-                            : isDone
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-curator-border text-curator-muted hover:bg-curator-border/80'
-                        }`}
-                      >
-                        <st.icon className="w-3.5 h-3.5" />
-                      </div>
-                      <span
-                        className={`text-[9px] sm:text-[10px] tracking-tight font-sans ${
-                          isCurrent
-                            ? 'font-bold text-curator-coral'
-                            : isDone
-                            ? 'font-medium text-emerald-800'
-                            : 'text-curator-muted'
-                        }`}
-                      >
-                        {st.label}
+                      <Icon className="w-4 h-4 flex-shrink-0" />
+                      <span className="text-[9px] font-mono capitalize leading-tight truncate">
+                        {s.label}
                       </span>
                     </button>
                   );
@@ -192,6 +265,185 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
               </div>
             </div>
 
+            {/* STEADFAST COURIER INTEGRATION CARD */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-curator-coral-light text-curator-coral flex items-center justify-center">
+                    <Truck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="font-serif text-sm font-bold text-curator-charcoal">
+                      Steadfast Courier Delivery
+                    </h4>
+                    <span className="text-[10px] text-curator-muted font-mono block">
+                      Automated Gateway Dispatch
+                    </span>
+                  </div>
+                </div>
+
+                {order.courier_tracking_code && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-mono text-[10px] font-bold uppercase">
+                    {order.courier_status || 'Consigned'}
+                  </span>
+                )}
+              </div>
+
+              {order.courier_tracking_code ? (
+                /* Already Dispatched State */
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div className="p-3 rounded-2xl bg-[#FAF5EE]/60 border border-curator-border/60">
+                      <span className="text-[10px] text-curator-muted uppercase font-bold block">
+                        Tracking Code
+                      </span>
+                      <div className="flex items-center justify-between mt-0.5">
+                        <span className="font-mono font-bold text-curator-coral text-sm">
+                          {order.courier_tracking_code}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(order.courier_tracking_code || '');
+                            success('Tracking code copied');
+                          }}
+                          className="text-curator-muted hover:text-curator-charcoal p-1"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#FAF5EE]/60 border border-curator-border/60">
+                      <span className="text-[10px] text-curator-muted uppercase font-bold block">
+                        Consignment ID
+                      </span>
+                      <span className="font-mono font-bold text-curator-charcoal text-sm mt-0.5 block">
+                        #{order.courier_consignment_id || '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleRefreshCourierStatus}
+                      disabled={isCheckingCourierStatus}
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal hover:bg-curator-surface-peach transition-colors min-h-[40px]"
+                    >
+                      <RefreshCw className={`w-3.5 h-3.5 ${isCheckingCourierStatus ? 'animate-spin text-curator-coral' : ''}`} />
+                      <span>{isCheckingCourierStatus ? 'Checking...' : 'Refresh Status'}</span>
+                    </button>
+
+                    <a
+                      href={steadfastService.getTrackingUrl(order.courier_tracking_code)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-1.5 py-2.5 px-4 rounded-xl bg-curator-charcoal text-white text-xs font-bold hover:bg-black transition-colors min-h-[40px]"
+                    >
+                      <span>Track Parcel</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+                </div>
+              ) : (
+                /* Ready to Dispatch State */
+                <div className="space-y-3 pt-2">
+                  <div className="p-3 rounded-2xl bg-amber-50/70 border border-amber-200 text-xs text-amber-900 flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-700 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Parcel Not Dispatched to Courier</p>
+                      <p className="text-[11px] text-amber-800 mt-0.5">
+                        Click below to instantly create consignment with COD ৳{order.total} and generate live tracking code.
+                      </p>
+                    </div>
+                  </div>
+
+                  {showCourierCustomizer ? (
+                    <div className="p-3.5 rounded-2xl bg-[#FAF5EE]/70 border border-curator-border space-y-3">
+                      <div>
+                        <label className="block text-[11px] font-bold text-curator-charcoal uppercase mb-1">
+                          COD Amount to Collect (৳)
+                        </label>
+                        <input
+                          type="number"
+                          value={courierCod}
+                          onChange={e => setCourierCod(Number(e.target.value))}
+                          className="w-full px-3 py-2 rounded-xl border border-curator-border text-xs font-mono font-bold bg-white focus:outline-none focus:border-curator-coral"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-curator-charcoal uppercase mb-1">
+                          Delivery Option
+                        </label>
+                        <select
+                          value={courierDeliveryType}
+                          onChange={e => setCourierDeliveryType(Number(e.target.value))}
+                          className="w-full px-3 py-2 rounded-xl border border-curator-border text-xs bg-white focus:outline-none"
+                        >
+                          <option value={0}>Home Delivery (0)</option>
+                          <option value={1}>Point Delivery / Hub Pick Up (1)</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-curator-charcoal uppercase mb-1">
+                          Courier Instructions Note
+                        </label>
+                        <input
+                          type="text"
+                          value={courierNote}
+                          onChange={e => setCourierNote(e.target.value)}
+                          className="w-full px-3 py-2 rounded-xl border border-curator-border text-xs bg-white focus:outline-none"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setShowCourierCustomizer(false)}
+                          className="flex-1 py-2 rounded-xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSendToSteadfast}
+                          disabled={isSendingToCourier}
+                          className="flex-1 py-2 rounded-xl bg-curator-coral text-white text-xs font-bold shadow-md hover:bg-curator-coral-hover disabled:opacity-50 flex items-center justify-center gap-1.5"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          <span>{isSendingToCourier ? 'Dispatching...' : 'Dispatch Now'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSendToSteadfast}
+                        disabled={isSendingToCourier}
+                        className="flex-1 inline-flex items-center justify-center gap-2 py-3 px-5 rounded-2xl bg-curator-coral text-white text-xs font-bold shadow-md hover:bg-curator-coral-hover active:scale-95 disabled:opacity-50 min-h-[44px]"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>{isSendingToCourier ? 'Connecting to Steadfast...' : 'Send to Steadfast Courier'}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setShowCourierCustomizer(true)}
+                        className="px-3.5 py-3 rounded-2xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal hover:bg-curator-surface-peach min-h-[44px]"
+                        title="Edit COD or Courier instructions"
+                      >
+                        Options
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Customer & Destination Card */}
             <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-3">
               <span className="text-[10px] font-bold tracking-widest text-curator-muted font-mono uppercase block">
@@ -205,7 +457,7 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
                   </h3>
                   <a
                     href={`tel:${order.phone}`}
-                    className="inline-flex items-center gap-1 text-xs font-mono font-bold text-curator-coral hover:underline mt-0.5 min-h-[36px] items-center"
+                    className="inline-flex items-center gap-1 text-xs font-mono font-bold text-curator-coral hover:underline mt-0.5 min-h-[36px]"
                   >
                     <Phone className="w-3.5 h-3.5" />
                     <span>{order.phone}</span>
@@ -259,31 +511,27 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
                         WC
                       </div>
                     )}
-
-                    <div className="min-w-0 flex-1">
-                      <h4 className="font-serif text-xs font-bold text-curator-charcoal truncate">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-serif text-sm font-bold text-curator-charcoal truncate">
                         {item.product_name}
                       </h4>
-                      <p className="text-[11px] text-curator-muted font-mono">
-                        {item.color_name} • Size: {item.size} • Qty: {item.quantity}
+                      <p className="text-xs text-curator-muted">
+                        Color: <span className="font-semibold text-curator-charcoal">{item.color_name}</span> • Size: <span className="font-semibold text-curator-charcoal">{item.size}</span>
                       </p>
-                    </div>
-
-                    <div className="text-right font-mono">
-                      <span className="font-bold text-xs text-curator-charcoal block">
-                        ৳{item.subtotal?.toLocaleString()}
-                      </span>
-                      <span className="text-[10px] text-curator-muted">
-                        ৳{item.unit_price} each
-                      </span>
+                      <p className="text-xs font-mono font-semibold text-curator-coral mt-0.5">
+                        ৳{item.unit_price} × {item.quantity} = ৳{item.subtotal}
+                      </p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Price Breakdown */}
+            {/* Financial Breakdown */}
             <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-2 text-xs">
+              <span className="text-[10px] font-bold tracking-widest text-curator-muted font-mono uppercase block mb-1">
+                Payment Summary
+              </span>
               <div className="flex justify-between text-curator-muted">
                 <span>Subtotal</span>
                 <span className="font-mono">৳{order.subtotal?.toLocaleString()}</span>

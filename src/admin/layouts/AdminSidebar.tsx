@@ -85,9 +85,10 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
     {
       title: 'SETTINGS & MEDIA',
       items: [
+        { label: 'Steadfast Courier', path: '/admin/settings/courier', icon: Truck },
+        { label: 'Delivery Fees', path: '/admin/settings/delivery', icon: Compass },
         { label: 'Media Library', path: '/admin/media', icon: Image },
         { label: 'Store Settings', path: '/admin/settings/store', icon: Store },
-        { label: 'Delivery Fees', path: '/admin/settings/delivery', icon: Truck },
         { label: 'Admin Team', path: '/admin/settings/admins', icon: Users }
       ]
     }

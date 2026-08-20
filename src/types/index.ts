@@ -114,6 +114,53 @@ export interface Order {
   gclid?: string;
   fbclid?: string;
   ttclid?: string;
+  courier_provider?: string;
+  courier_consignment_id?: string | number;
+  courier_tracking_code?: string;
+  courier_status?: string;
+  courier_sent_at?: string;
+  courier_response?: any;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SteadfastSettings {
+  id?: string;
+  is_enabled: boolean;
+  api_key: string;
+  secret_key: string;
+  base_url: string;
+  default_delivery_type: number;
+  default_note?: string;
+  auto_send_on_confirm?: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface SteadfastOrderPayload {
+  invoice: string;
+  recipient_name: string;
+  recipient_phone: string;
+  alternative_phone?: string;
+  recipient_email?: string;
+  recipient_address: string;
+  cod_amount: number;
+  note?: string;
+  item_description?: string;
+  total_lot?: number;
+  delivery_type?: number;
+}
+
+export interface SteadfastConsignment {
+  consignment_id: number;
+  invoice: string;
+  tracking_code: string;
+  recipient_name: string;
+  recipient_phone: string;
+  recipient_address: string;
+  cod_amount: number;
+  status: string;
+  note?: string;
   created_at?: string;
   updated_at?: string;
 }

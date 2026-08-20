@@ -7,7 +7,8 @@ import {
   Sparkles,
   ShoppingBag,
   ChevronRight,
-  RefreshCw
+  RefreshCw,
+  Truck
 } from 'lucide-react';
 import { orderService } from '../../lib/api';
 import { Order, OrderStatus } from '../../types';
@@ -248,14 +249,21 @@ export const OrdersPage: React.FC = () => {
                     <span className="font-serif font-bold text-base text-curator-coral block">
                       ৳{order.total?.toLocaleString()}
                     </span>
-                    <span className="text-[10px] text-curator-muted font-mono">
-                      {order.payment_method?.includes('Cash') ? 'COD' : 'Paid'}
-                    </span>
+                    {order.courier_tracking_code ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-mono text-[9px] font-bold">
+                        <Truck className="w-2.5 h-2.5" />
+                        <span>{order.courier_tracking_code}</span>
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-curator-muted font-mono">
+                        {order.payment_method?.includes('Cash') ? 'COD' : 'Paid'}
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 <div className="pt-2 border-t border-curator-border/50 flex items-center justify-between text-xs text-curator-coral font-bold">
-                  <span>View Details & Timeline</span>
+                  <span>View Details & Dispatch</span>
                   <ChevronRight className="w-4 h-4" />
                 </div>
               </div>
@@ -273,6 +281,7 @@ export const OrdersPage: React.FC = () => {
                   <th className="py-3.5 px-4 font-semibold">Items</th>
                   <th className="py-3.5 px-4 font-semibold">Total Amount</th>
                   <th className="py-3.5 px-4 font-semibold">Status</th>
+                  <th className="py-3.5 px-4 font-semibold">Steadfast Courier</th>
                   <th className="py-3.5 px-6 font-semibold text-right">Actions</th>
                 </tr>
               </thead>
@@ -329,6 +338,24 @@ export const OrdersPage: React.FC = () => {
                       </span>
                     </td>
 
+                    <td className="py-4 px-4">
+                      {order.courier_tracking_code ? (
+                        <div className="space-y-0.5">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 font-mono text-[10px] font-bold">
+                            <Truck className="w-3 h-3" />
+                            <span>{order.courier_tracking_code}</span>
+                          </span>
+                          <span className="text-[9px] text-curator-muted block font-mono">
+                            {order.courier_status || 'In Review'}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-curator-muted font-mono">
+                          Not Sent
+                        </span>
+                      )}
+                    </td>
+
                     <td className="py-4 px-6 text-right">
                       <button
                         type="button"
@@ -356,6 +383,7 @@ export const OrdersPage: React.FC = () => {
         isOpen={Boolean(selectedOrder)}
         onClose={() => setSelectedOrder(null)}
         onUpdateStatus={handleUpdateStatus}
+        onOrderUpdated={loadOrders}
       />
     </div>
   );

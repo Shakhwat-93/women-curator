@@ -65,9 +65,10 @@ export const AdminMoreDrawer: React.FC<AdminMoreDrawerProps> = ({ isOpen, onClos
     {
       title: 'SETTINGS & MEDIA',
       items: [
+        { label: 'Steadfast Courier', path: '/admin/settings/courier', icon: Truck, desc: 'API Keys & Gateway Automation' },
+        { label: 'Delivery Fees', path: '/admin/settings/delivery', icon: Compass, desc: 'Inside/Outside Dhaka rates' },
         { label: 'Media Cloud Library', path: '/admin/media', icon: Image, desc: 'Supabase storage files' },
         { label: 'Store Settings', path: '/admin/settings/store', icon: Store, desc: 'Brand, helpline, address' },
-        { label: 'Delivery Fees', path: '/admin/settings/delivery', icon: Truck, desc: 'Inside/Outside Dhaka rates' },
         { label: 'Admin Team', path: '/admin/settings/admins', icon: Users, desc: 'Roles & authorizations' }
       ]
     }
