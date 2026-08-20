@@ -1,11 +1,33 @@
-import React, { useState } from 'react';
-import { ShieldCheck, CheckCircle2, Lock, ArrowRight, AlertCircle, ShoppingBag, Sparkles, User, Phone, MapPin, Tag } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from 'react';
+import {
+  ShieldCheck,
+  CheckCircle2,
+  Lock,
+  ArrowRight,
+  AlertCircle,
+  ShoppingBag,
+  Sparkles,
+  User,
+  Phone,
+  MapPin,
+  Tag,
+  Trash2,
+  Check
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import { Product, ColorOption, DeliverySettings, Order } from '../../types';
 import { orderService } from '../../lib/api';
 import { OrganicBackground } from '../common/OrganicBackground';
 import { track } from '../../tracking';
+
+export interface OrderItemSelection {
+  productId: string;
+  product: Product;
+  selectedColor: ColorOption;
+  selectedSize: string;
+  quantity: number;
+}
 
 interface DirectOrderSectionProps {
   products: Product[];
@@ -20,11 +42,22 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   onSelectProduct,
   deliverySettings
 }) => {
-  const [selectedColor, setSelectedColor] = useState<ColorOption>(selectedProduct.colors[0] || { name: 'Signature', hex: '#DE4F3C' });
-  const [selectedSize, setSelectedSize] = useState<string>('M (38)');
-  const [quantity, setQuantity] = useState<number>(1);
+  // Multi-item Cart / Selected Garments State
+  const [orderItems, setOrderItems] = useState<OrderItemSelection[]>(() => {
+    const initialColor = selectedProduct?.colors?.[0] || { name: 'Signature', hex: '#DE4F3C' };
+    const initialSize = selectedProduct?.sizes?.[0] || 'M (38)';
+    return [
+      {
+        productId: selectedProduct.id,
+        product: selectedProduct,
+        selectedColor: initialColor,
+        selectedSize: initialSize,
+        quantity: 1
+      }
+    ];
+  });
 
-  // Customer Form Fields
+  // Customer Destination Fields
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
@@ -35,27 +68,101 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [promoMessage, setPromoMessage] = useState('');
 
-  // States
-  const [errors, setErrors] = useState<{ fullName?: string; phone?: string; address?: string }>({});
+  // Form Submission States
+  const [errors, setErrors] = useState<{ fullName?: string; phone?: string; address?: string; items?: string }>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderCompleted, setOrderCompleted] = useState<{ orderNumber: string; total: number } | null>(null);
+  const [orderCompleted, setOrderCompleted] = useState<{ orderNumber: string; total: number; items: OrderItemSelection[] } | null>(null);
 
-  // Update color and size when selectedProduct changes
-  React.useEffect(() => {
-    if (selectedProduct && selectedProduct.colors && selectedProduct.colors.length > 0) {
-      setSelectedColor(selectedProduct.colors[0]);
-      setSelectedSize(selectedProduct.sizes?.[0] || 'M (38)');
-    }
+  // Sync when parent selects a product from outside (e.g. clicking 'Order Now' on a specific card)
+  useEffect(() => {
+    if (!selectedProduct) return;
+    setOrderItems(prev => {
+      const exists = prev.some(item => item.productId === selectedProduct.id);
+      if (exists) return prev;
+      const initialColor = selectedProduct.colors?.[0] || { name: 'Signature', hex: '#DE4F3C' };
+      const initialSize = selectedProduct.sizes?.[0] || 'M (38)';
+      return [
+        ...prev,
+        {
+          productId: selectedProduct.id,
+          product: selectedProduct,
+          selectedColor: initialColor,
+          selectedSize: initialSize,
+          quantity: 1
+        }
+      ];
+    });
   }, [selectedProduct]);
+
+  // Add / Toggle Product from Grid
+  const handleToggleProduct = (prod: Product) => {
+    onSelectProduct(prod);
+    setOrderItems(prev => {
+      const existsIndex = prev.findIndex(item => item.productId === prod.id);
+      if (existsIndex >= 0) {
+        // If already selected, do not remove if it's the only one
+        if (prev.length === 1) return prev;
+        return prev.filter(item => item.productId !== prod.id);
+      } else {
+        const initialColor = prod.colors?.[0] || { name: 'Signature', hex: '#DE4F3C' };
+        const initialSize = prod.sizes?.[0] || 'M (38)';
+        return [
+          ...prev,
+          {
+            productId: prod.id,
+            product: prod,
+            selectedColor: initialColor,
+            selectedSize: initialSize,
+            quantity: 1
+          }
+        ];
+      }
+    });
+    if (errors.items) {
+      setErrors(prev => ({ ...prev, items: undefined }));
+    }
+  };
+
+  // Update Item Options
+  const updateItemQuantity = (productId: string, delta: number) => {
+    setOrderItems(prev =>
+      prev.map(item => {
+        if (item.productId !== productId) return item;
+        const newQty = Math.max(1, item.quantity + delta);
+        return { ...item, quantity: newQty };
+      })
+    );
+  };
+
+  const updateItemColor = (productId: string, color: ColorOption) => {
+    setOrderItems(prev =>
+      prev.map(item => (item.productId === productId ? { ...item, selectedColor: color } : item))
+    );
+  };
+
+  const updateItemSize = (productId: string, size: string) => {
+    setOrderItems(prev =>
+      prev.map(item => (item.productId === productId ? { ...item, selectedSize: size } : item))
+    );
+  };
+
+  const removeItem = (productId: string) => {
+    if (orderItems.length <= 1) {
+      alert('Please keep at least 1 garment in your order.');
+      return;
+    }
+    setOrderItems(prev => prev.filter(item => item.productId !== productId));
+  };
 
   // Dynamic Delivery Calculations from CMS
   const insideFee = deliverySettings?.inside_dhaka_fee ?? 80;
   const outsideFee = deliverySettings?.outside_dhaka_fee ?? 150;
   const freeThreshold = deliverySettings?.free_delivery_threshold ?? 2500;
 
-  const itemPrice = selectedProduct.price;
-  const subtotal = itemPrice * quantity;
-  const deliveryCharge = subtotal >= freeThreshold ? 0 : (city === 'Dhaka' ? insideFee : outsideFee);
+  const totalItemsCount = orderItems.reduce((sum, it) => sum + it.quantity, 0);
+  const subtotal = orderItems.reduce((sum, it) => sum + it.product.price * it.quantity, 0);
+  const isFreeDelivery = subtotal >= freeThreshold;
+  const deliveryCharge = isFreeDelivery ? 0 : city === 'Dhaka' ? insideFee : outsideFee;
   const total = Math.max(0, subtotal + deliveryCharge - appliedDiscount);
 
   const handleApplyPromo = (e: React.FormEvent) => {
@@ -74,7 +181,10 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   };
 
   const validate = () => {
-    const errs: { fullName?: string; phone?: string; address?: string } = {};
+    const errs: { fullName?: string; phone?: string; address?: string; items?: string } = {};
+    if (orderItems.length === 0) {
+      errs.items = 'Please select at least 1 garment to place an order.';
+    }
     if (!fullName.trim()) {
       errs.fullName = 'Please enter your full name';
     }
@@ -115,18 +225,16 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
         discount: appliedDiscount,
         total: total,
         status: 'pending',
-        items: [
-          {
-            product_id: selectedProduct.id,
-            product_name: selectedProduct.name,
-            product_image: selectedProduct.image_url,
-            color_name: selectedColor.name,
-            size: selectedSize,
-            quantity: quantity,
-            unit_price: selectedProduct.price,
-            subtotal: subtotal
-          }
-        ]
+        items: orderItems.map(item => ({
+          product_id: item.product.id,
+          product_name: item.product.name,
+          product_image: item.product.image_url,
+          color_name: item.selectedColor.name,
+          size: item.selectedSize,
+          quantity: item.quantity,
+          unit_price: item.product.price,
+          subtotal: item.product.price * item.quantity
+        }))
       };
 
       const res = await orderService.createOrder(orderPayload);
@@ -143,13 +251,14 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
 
         setOrderCompleted({
           orderNumber: res.orderId || orderNumber,
-          total: total
+          total: total,
+          items: orderItems
         });
 
         try {
           confetti({
-            particleCount: 90,
-            spread: 75,
+            particleCount: 100,
+            spread: 80,
             origin: { y: 0.6 },
             colors: ['#DE4F3C', '#F4A999', '#FAF5EE', '#BD4857']
           });
@@ -169,20 +278,20 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
       {/* Background Organic Geometry */}
       <OrganicBackground variant="checkout" showDots={true} showArc={true} showShadows={true} />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         {/* Section Header */}
         <div className="text-center max-w-2xl mx-auto mb-10 sm:mb-12">
           <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-widest mb-3 shadow-md">
             <Sparkles className="w-3.5 h-3.5" />
-            <span>Direct Express Checkout</span>
+            <span>Direct Express Multi-Item Checkout</span>
           </div>
 
           <h2 className="font-serif text-3xl sm:text-4xl md:text-5xl font-bold text-curator-charcoal tracking-tight">
-            Order Your Signature Piece
+            Order Your Signature Piece(s)
           </h2>
 
           <p className="text-xs sm:text-sm text-curator-muted mt-2 font-sans">
-            {deliverySettings?.delivery_note || 'Inspect fabric & quality upon delivery. Cash on Delivery across Bangladesh.'}
+            {deliverySettings?.delivery_note || 'Select multiple garments, customize your sizes & colors. Cash on Delivery across Bangladesh.'}
           </p>
         </div>
 
@@ -209,28 +318,39 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
               Order Reference: <strong className="text-curator-charcoal font-mono text-base font-bold">{orderCompleted.orderNumber}</strong>. Our concierge team will call to confirm before priority dispatch.
             </p>
 
-            {/* Customer Destination Snapshot Card */}
-            <div className="mt-6 p-5 rounded-2xl bg-white border border-curator-border text-left shadow-sm space-y-3.5">
-              <h4 className="text-sm font-bold text-curator-charcoal border-b border-curator-border/80 pb-2">
-                Customer Destination
+            {/* Customer Destination & Items Snapshot Card */}
+            <div className="mt-6 p-5 rounded-2xl bg-[#FAF5EE]/70 border border-curator-border text-left shadow-sm space-y-3.5">
+              <h4 className="text-xs font-bold text-curator-charcoal uppercase tracking-wider border-b border-curator-border/80 pb-2">
+                Ordered Garments ({orderCompleted.items.length})
               </h4>
 
-              <div className="flex items-center gap-3 text-curator-charcoal">
-                <User className="w-4 h-4 text-curator-muted flex-shrink-0" />
-                <span className="font-mono text-sm font-semibold">{fullName}</span>
+              <div className="space-y-2">
+                {orderCompleted.items.map((it, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-xs py-1 border-b border-curator-border/40 last:border-none">
+                    <div className="flex items-center gap-2.5">
+                      <img src={it.product.image_url} alt={it.product.name} className="w-9 h-11 object-cover rounded-lg" />
+                      <div>
+                        <h5 className="font-bold text-curator-charcoal">{it.product.name}</h5>
+                        <span className="text-[11px] text-curator-muted font-mono">{it.selectedColor.name} • {it.selectedSize} • Qty: {it.quantity}</span>
+                      </div>
+                    </div>
+                    <span className="font-mono font-bold text-curator-coral">৳{(it.product.price * it.quantity).toLocaleString()}</span>
+                  </div>
+                ))}
               </div>
 
-              <div className="flex items-center gap-3 text-curator-charcoal">
-                <Phone className="w-4 h-4 text-curator-muted flex-shrink-0" />
-                <span className="font-mono text-sm tracking-wide">{phone}</span>
-              </div>
-
-              <div className="flex items-start gap-3 text-curator-charcoal pt-1">
-                <MapPin className="w-4 h-4 text-curator-coral flex-shrink-0 mt-0.5" />
-                <div className="font-mono text-xs leading-relaxed">
-                  <strong className="block font-sans font-bold text-curator-charcoal text-xs mb-0.5">Shipping Address:</strong>
-                  <span>{address}</span>
-                  {postalCode && <span className="block mt-0.5">{city === 'Dhaka' ? 'Dhaka' : 'Rangpur'} - {postalCode}</span>}
+              <div className="pt-2 border-t border-curator-border text-xs space-y-1">
+                <div className="flex items-center gap-2 text-curator-charcoal font-medium">
+                  <User className="w-3.5 h-3.5 text-curator-muted" />
+                  <span>{fullName}</span>
+                </div>
+                <div className="flex items-center gap-2 text-curator-charcoal font-mono text-xs">
+                  <Phone className="w-3.5 h-3.5 text-curator-muted" />
+                  <span>{phone}</span>
+                </div>
+                <div className="flex items-start gap-2 text-curator-charcoal text-xs">
+                  <MapPin className="w-3.5 h-3.5 text-curator-coral flex-shrink-0 mt-0.5" />
+                  <span>{address} ({city})</span>
                 </div>
               </div>
 
@@ -246,6 +366,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                 setFullName('');
                 setPhone('');
                 setAddress('');
+                setNotes('');
               }}
               className="mt-6 px-8 py-3.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider hover:bg-curator-coral-hover transition-all shadow-md"
             >
@@ -257,40 +378,66 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
           <div className="bg-[#FDFBF7] rounded-[2.5rem] p-6 sm:p-10 border border-curator-border shadow-2xl">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
               
-              {/* Left Column: Product Selection & Configuration (5 cols) */}
-              <div className="lg:col-span-5 space-y-6">
+              {/* Left Column: Multi-Product Selection & Customizers (6 cols) */}
+              <div className="lg:col-span-6 space-y-6">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-2.5">
-                    1. Select Garment
-                  </label>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal">
+                      1. Select Garments ({orderItems.length} Selected)
+                    </label>
+                    <span className="text-[11px] text-curator-coral font-medium">
+                      Tap dresses to add / remove
+                    </span>
+                  </div>
                   
-                  {/* Product Cards Selector Tabs */}
-                  <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 max-h-72 overflow-y-auto pr-1">
+                  {/* Product Cards Selector Gallery */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1 pb-1">
                     {products.filter(p => p.status !== 'archived' && p.is_active !== false).map((prod) => {
-                      const isCurrent = selectedProduct.id === prod.id;
+                      const isSelected = orderItems.some(it => it.productId === prod.id);
+                      const currentItem = orderItems.find(it => it.productId === prod.id);
+
                       return (
                         <button
                           key={prod.id}
                           type="button"
-                          onClick={() => onSelectProduct(prod)}
-                          className={`flex items-center gap-2.5 p-2 rounded-2xl border text-left transition-all ${
-                            isCurrent
-                              ? 'border-curator-coral bg-curator-coral-light/60 shadow-sm ring-1 ring-curator-coral'
-                              : 'border-curator-border bg-white hover:bg-curator-surface-peach/50'
+                          onClick={() => handleToggleProduct(prod)}
+                          className={`relative flex flex-col p-2 rounded-2xl border text-left transition-all group ${
+                            isSelected
+                              ? 'border-curator-coral bg-curator-coral-light/50 shadow-sm ring-1 ring-curator-coral'
+                              : 'border-curator-border bg-white hover:border-curator-muted/80'
                           }`}
                         >
-                          <img
-                            src={prod.image_url}
-                            alt={prod.name}
-                            className="w-12 h-14 object-cover rounded-xl bg-curator-bg flex-shrink-0"
-                          />
-                          <div className="min-w-0 flex-1">
-                            <h4 className="font-serif text-xs font-bold text-curator-charcoal truncate">
-                              {prod.name}
-                            </h4>
-                            <span className="font-serif font-bold text-curator-coral text-xs block mt-0.5">
+                          {/* Selection Check Badge */}
+                          <div
+                            className={`absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold z-10 transition-all ${
+                              isSelected
+                                ? 'bg-curator-coral text-white shadow-xs'
+                                : 'bg-white/80 border border-curator-border text-transparent group-hover:text-curator-muted'
+                            }`}
+                          >
+                            <Check className="w-3 h-3 stroke-[3]" />
+                          </div>
+
+                          <div className="w-full h-24 rounded-xl overflow-hidden bg-curator-surface-peach mb-2">
+                            <img
+                              src={prod.image_url}
+                              alt={prod.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          </div>
+
+                          <h4 className="font-serif text-xs font-bold text-curator-charcoal line-clamp-1">
+                            {prod.name}
+                          </h4>
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="font-serif font-bold text-curator-coral text-xs">
                               ৳{prod.price.toLocaleString()}
                             </span>
+                            {isSelected && currentItem && currentItem.quantity > 1 && (
+                              <span className="text-[10px] font-mono font-bold text-curator-charcoal bg-white/90 px-1.5 py-0.2 rounded-full border border-curator-border">
+                                x{currentItem.quantity}
+                              </span>
+                            )}
                           </div>
                         </button>
                       );
@@ -298,115 +445,146 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                   </div>
                 </div>
 
-                {/* Active Selected Dress Visual Showcase */}
-                <div className="p-4 rounded-2xl bg-white border border-curator-border shadow-sm flex items-center gap-4">
-                  <div className="w-20 h-24 rounded-xl overflow-hidden bg-curator-surface-peach flex-shrink-0">
-                    <img
-                      src={selectedProduct.image_url}
-                      alt={selectedProduct.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-curator-coral-light text-curator-coral font-bold font-mono">
-                      {selectedProduct.badge || 'New Drop'}
+                {/* Selected Garments Customizer Cards */}
+                <div className="space-y-3.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold uppercase tracking-wider text-curator-charcoal block">
+                      Customize Size & Color per Item
                     </span>
-                    <h3 className="font-serif text-base font-bold text-curator-charcoal mt-1 line-clamp-1">
-                      {selectedProduct.name}
-                    </h3>
-                    <div className="flex items-baseline gap-2 mt-1">
-                      <span className="font-serif text-lg font-bold text-curator-coral">
-                        ৳{selectedProduct.price.toLocaleString()}
-                      </span>
-                      {selectedProduct.compare_price > selectedProduct.price && (
-                        <span className="text-xs text-curator-muted line-through font-mono">
-                          ৳{selectedProduct.compare_price.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
+                    <span className="text-[11px] text-curator-muted font-mono">
+                      {orderItems.length} Garment{orderItems.length > 1 ? 's' : ''} in Bag
+                    </span>
                   </div>
-                </div>
 
-                {/* Color Selector */}
-                {selectedProduct.colors && selectedProduct.colors.length > 0 && (
-                  <div>
-                    <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-2">
-                      Color: <span className="text-curator-coral font-semibold">{selectedColor.name}</span>
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedProduct.colors.map(color => (
-                        <button
-                          key={color.hex}
-                          type="button"
-                          onClick={() => setSelectedColor(color)}
-                          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all ${
-                            selectedColor.hex === color.hex
-                              ? 'border-curator-coral bg-curator-coral text-white shadow-sm'
-                              : 'border-curator-border bg-white text-curator-charcoal hover:border-curator-muted'
-                          }`}
-                        >
-                          <span
-                            className="w-3.5 h-3.5 rounded-full inline-block border border-white/40"
-                            style={{ backgroundColor: color.hex }}
-                          />
-                          <span>{color.name}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Size Selector */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-2">
-                    Select Size
-                  </label>
-                  <div className="grid grid-cols-4 gap-2">
-                    {(selectedProduct.sizes && selectedProduct.sizes.length > 0 ? selectedProduct.sizes : ['S (36)', 'M (38)', 'L (40)', 'XL (42)']).map(size => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => setSelectedSize(size)}
-                        className={`py-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
-                          selectedSize === size
-                            ? 'bg-curator-charcoal text-white border-curator-charcoal shadow-sm'
-                            : 'bg-white text-curator-charcoal border-curator-border hover:bg-curator-surface-peach'
-                        }`}
+                  <AnimatePresence>
+                    {orderItems.map((item) => (
+                      <motion.div
+                        key={item.productId}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        className="p-4 rounded-2xl bg-white border border-curator-border shadow-xs space-y-3 relative"
                       >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                        {/* Item Header & Delete */}
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={item.product.image_url}
+                              alt={item.product.name}
+                              className="w-12 h-14 object-cover rounded-xl bg-curator-surface-peach flex-shrink-0"
+                            />
+                            <div>
+                              <h4 className="font-serif text-sm font-bold text-curator-charcoal line-clamp-1">
+                                {item.product.name}
+                              </h4>
+                              <span className="font-serif font-bold text-curator-coral text-xs">
+                                ৳{item.product.price.toLocaleString()} each
+                              </span>
+                            </div>
+                          </div>
 
-                {/* Quantity Selector */}
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-white border border-curator-border">
-                  <span className="text-xs font-bold uppercase tracking-wider text-curator-charcoal">
-                    Quantity:
-                  </span>
-                  <div className="inline-flex items-center rounded-full border border-curator-border bg-curator-surface-peach/40 px-2 py-0.5">
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-7 h-7 rounded-full text-curator-charcoal hover:bg-white flex items-center justify-center font-bold"
-                    >
-                      -
-                    </button>
-                    <span className="w-8 text-center text-sm font-bold font-mono text-curator-charcoal">
-                      {quantity}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setQuantity(quantity + 1)}
-                      className="w-7 h-7 rounded-full text-curator-charcoal hover:bg-white flex items-center justify-center font-bold"
-                    >
-                      +
-                    </button>
-                  </div>
+                          {orderItems.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => removeItem(item.productId)}
+                              className="p-1.5 rounded-full text-curator-muted hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              title="Remove item"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* Color Selector */}
+                        {item.product.colors && item.product.colors.length > 0 && (
+                          <div className="pt-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-curator-muted block mb-1.5 font-mono">
+                              Color: <strong className="text-curator-charcoal font-sans">{item.selectedColor.name}</strong>
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {item.product.colors.map(color => (
+                                <button
+                                  key={color.hex}
+                                  type="button"
+                                  onClick={() => updateItemColor(item.productId, color)}
+                                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] font-medium transition-all ${
+                                    item.selectedColor.hex === color.hex
+                                      ? 'border-curator-coral bg-curator-coral text-white shadow-xs'
+                                      : 'border-curator-border bg-[#FAF5EE]/60 text-curator-charcoal hover:border-curator-muted'
+                                  }`}
+                                >
+                                  <span
+                                    className="w-2.5 h-2.5 rounded-full inline-block border border-white/40"
+                                    style={{ backgroundColor: color.hex }}
+                                  />
+                                  <span>{color.name}</span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Size Selector & Quantity Row */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-curator-border/60">
+                          {/* Size */}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-curator-muted block mb-1 font-mono">
+                              Size
+                            </span>
+                            <div className="flex gap-1">
+                              {(item.product.sizes && item.product.sizes.length > 0
+                                ? item.product.sizes
+                                : ['S (36)', 'M (38)', 'L (40)', 'XL (42)']
+                              ).map(sz => (
+                                <button
+                                  key={sz}
+                                  type="button"
+                                  onClick={() => updateItemSize(item.productId, sz)}
+                                  className={`flex-1 py-1.5 rounded-lg text-[11px] font-bold border transition-all text-center ${
+                                    item.selectedSize === sz
+                                      ? 'bg-curator-charcoal text-white border-curator-charcoal shadow-xs'
+                                      : 'bg-[#FAF5EE]/60 text-curator-charcoal border-curator-border hover:bg-white'
+                                  }`}
+                                >
+                                  {sz.split(' ')[0]}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Quantity */}
+                          <div>
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-curator-muted block mb-1 font-mono">
+                              Quantity
+                            </span>
+                            <div className="flex items-center justify-between border border-curator-border rounded-xl bg-[#FAF5EE]/60 p-0.5">
+                              <button
+                                type="button"
+                                onClick={() => updateItemQuantity(item.productId, -1)}
+                                className="w-7 h-7 rounded-lg text-curator-charcoal hover:bg-white flex items-center justify-center font-bold"
+                              >
+                                -
+                              </button>
+                              <span className="font-mono font-bold text-xs text-curator-charcoal">
+                                {item.quantity}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => updateItemQuantity(item.productId, 1)}
+                                className="w-7 h-7 rounded-lg text-curator-charcoal hover:bg-white flex items-center justify-center font-bold"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
 
                 {/* Promo Code Box */}
-                <div className="pt-1">
+                <div className="p-4 rounded-2xl bg-white border border-curator-border shadow-xs">
                   <form onSubmit={handleApplyPromo} className="flex gap-2">
                     <div className="relative flex-1">
                       <Tag className="w-3.5 h-3.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-curator-muted" />
@@ -415,7 +593,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                         value={promoCode}
                         onChange={e => setPromoCode(e.target.value)}
                         placeholder="PROMO CODE (CURATOR10)"
-                        className="w-full pl-9 pr-3 py-2.5 rounded-full border border-curator-border bg-white text-xs font-mono uppercase focus:outline-none focus:border-curator-coral"
+                        className="w-full pl-9 pr-3 py-2.5 rounded-full border border-curator-border bg-[#FAF5EE]/50 text-xs font-mono uppercase focus:outline-none focus:border-curator-coral"
                       />
                     </div>
                     <button
@@ -426,15 +604,15 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     </button>
                   </form>
                   {promoMessage && (
-                    <p className={`text-[11px] mt-1 font-medium ${appliedDiscount > 0 ? 'text-emerald-600' : 'text-curator-rose'}`}>
+                    <p className={`text-[11px] mt-1.5 font-medium ${appliedDiscount > 0 ? 'text-emerald-600' : 'text-curator-rose'}`}>
                       {promoMessage}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Right Column: Customer Destination & Live Checkout (7 cols) */}
-              <div className="lg:col-span-7 space-y-6">
+              {/* Right Column: Customer Destination & Live Checkout (6 cols) */}
+              <div className="lg:col-span-6 space-y-6">
                 <form onSubmit={handleDirectOrder} className="space-y-4">
                   <div className="flex items-center gap-2 pb-2 border-b border-curator-border">
                     <label className="text-xs font-bold uppercase tracking-wider text-curator-charcoal">
@@ -594,17 +772,27 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     />
                   </div>
 
-                  {/* Live Cost Breakdown Table */}
+                  {/* Live Multi-Item Cost Breakdown Table */}
                   <div className="p-4 rounded-2xl bg-curator-surface-peach/50 border border-curator-border space-y-2 text-xs">
                     <div className="flex justify-between text-curator-muted">
-                      <span>Item Subtotal ({quantity} item{quantity > 1 ? 's' : ''}):</span>
+                      <span>Items Subtotal ({totalItemsCount} item{totalItemsCount > 1 ? 's' : ''}):</span>
                       <span className="font-semibold font-mono text-curator-charcoal">৳{subtotal.toLocaleString()}</span>
+                    </div>
+
+                    {/* Breakdown per item preview */}
+                    <div className="py-1 border-y border-curator-border/50 space-y-1">
+                      {orderItems.map((it, idx) => (
+                        <div key={idx} className="flex justify-between text-[11px] text-curator-muted font-mono">
+                          <span className="truncate max-w-[200px]">{it.product.name} ({it.selectedSize}) x{it.quantity}</span>
+                          <span>৳{(it.product.price * it.quantity).toLocaleString()}</span>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="flex justify-between text-curator-muted">
                       <span>Delivery Fee ({city === 'Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
                       <span className="font-semibold font-mono text-curator-charcoal">
-                        {deliveryCharge === 0 ? 'FREE' : `৳${deliveryCharge}`}
+                        {deliveryCharge === 0 ? 'FREE (Threshold met)' : `৳${deliveryCharge}`}
                       </span>
                     </div>
 
@@ -626,7 +814,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                   {/* Cash on Delivery Guarantee badge */}
                   <div className="flex items-center gap-2 p-3 rounded-2xl bg-white border border-curator-border/80 text-[11px] text-curator-muted">
                     <ShieldCheck className="w-4 h-4 text-curator-coral flex-shrink-0" />
-                    <span>Cash on Delivery — Inspect your dress before final payment.</span>
+                    <span>Cash on Delivery — Inspect all garments upon delivery before payment.</span>
                   </div>
 
                   {/* BIG PROMINENT CORAL SUBMIT BUTTON */}
@@ -643,7 +831,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     ) : (
                       <>
                         <ShoppingBag className="w-5 h-5" />
-                        <span>Confirm Order — ৳{total.toLocaleString()}</span>
+                        <span>Confirm Order ({totalItemsCount} Piece{totalItemsCount > 1 ? 's' : ''}) — ৳{total.toLocaleString()}</span>
                         <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                       </>
                     )}
