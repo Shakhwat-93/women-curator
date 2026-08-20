@@ -29,6 +29,7 @@ import { AdminUsersPage } from './admin/pages/AdminUsersPage';
 import { MediaPage } from './admin/pages/MediaPage';
 import { TrackingSettingsPage } from './admin/pages/TrackingSettingsPage';
 import { CourierSettingsPage } from './admin/pages/CourierSettingsPage';
+import { SystemHealthPage } from './admin/pages/SystemHealthPage';
 import { RouteTracker } from './tracking/RouteTracker';
 
 import './index.css';
@@ -66,6 +67,7 @@ createRoot(document.getElementById('root')!).render(
                     <Route path="marketing/newsletter" element={<NewsletterPage />} />
                     <Route path="settings/tracking" element={<TrackingSettingsPage />} />
                     <Route path="settings/courier" element={<CourierSettingsPage />} />
+                    <Route path="settings/health" element={<SystemHealthPage />} />
                     <Route path="settings/store" element={<StoreSettingsPage />} />
                     <Route path="settings/delivery" element={<DeliverySettingsPage />} />
                     <Route path="settings/admins" element={<AdminUsersPage />} />

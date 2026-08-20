@@ -19,7 +19,8 @@ import {
   ExternalLink,
   LogOut,
   X,
-  Activity
+  Activity,
+  Database
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
@@ -85,8 +86,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
     {
       title: 'SETTINGS & MEDIA',
       items: [
-        { label: 'Steadfast Courier', path: '/admin/settings/courier', icon: Truck },
+        { label: 'Courier Gateway', path: '/admin/settings/courier', icon: Truck },
         { label: 'Delivery Fees', path: '/admin/settings/delivery', icon: Compass },
+        { label: 'Database Health', path: '/admin/settings/health', icon: Database },
         { label: 'Media Library', path: '/admin/media', icon: Image },
         { label: 'Store Settings', path: '/admin/settings/store', icon: Store },
         { label: 'Admin Team', path: '/admin/settings/admins', icon: Users }
