@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle2, Lock, ArrowRight, AlertCircle, ShoppingBag, Sparkles, User, Phone, MapPin, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Product, ColorOption } from '../../types';
+import { Product, ColorOption, DeliverySettings } from '../../types';
 import { orderService } from '../../lib/api';
 import { OrganicBackground } from '../common/OrganicBackground';
 
@@ -10,14 +10,16 @@ interface DirectOrderSectionProps {
   products: Product[];
   selectedProduct: Product;
   onSelectProduct: (product: Product) => void;
+  deliverySettings?: DeliverySettings | null;
 }
 
 export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   products,
   selectedProduct,
-  onSelectProduct
+  onSelectProduct,
+  deliverySettings
 }) => {
-  const [selectedColor, setSelectedColor] = useState<ColorOption>(selectedProduct.colors[0]);
+  const [selectedColor, setSelectedColor] = useState<ColorOption>(selectedProduct.colors[0] || { name: 'Signature', hex: '#DE4F3C' });
   const [selectedSize, setSelectedSize] = useState<string>('M (38)');
   const [quantity, setQuantity] = useState<number>(1);
 
@@ -25,7 +27,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
   const [fullName, setFullName] = useState('Shakhwat hossain rasel');
   const [phone, setPhone] = useState('01540400247');
   const [address, setAddress] = useState('mahiganj Rangpur');
-  const [city, setCity] = useState('Outside');
+  const [city, setCity] = useState<'Dhaka' | 'Outside'>('Outside');
   const [postalCode, setPostalCode] = useState('5403');
   const [notes, setNotes] = useState('');
   const [promoCode, setPromoCode] = useState('');
@@ -39,16 +41,20 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
 
   // Update color and size when selectedProduct changes
   React.useEffect(() => {
-    if (selectedProduct) {
+    if (selectedProduct && selectedProduct.colors && selectedProduct.colors.length > 0) {
       setSelectedColor(selectedProduct.colors[0]);
-      setSelectedSize(selectedProduct.sizes[0] || 'M (38)');
+      setSelectedSize(selectedProduct.sizes?.[0] || 'M (38)');
     }
   }, [selectedProduct]);
 
-  // Calculations
+  // Dynamic Delivery Calculations from CMS
+  const insideFee = deliverySettings?.inside_dhaka_fee ?? 80;
+  const outsideFee = deliverySettings?.outside_dhaka_fee ?? 150;
+  const freeThreshold = deliverySettings?.free_delivery_threshold ?? 2500;
+
   const itemPrice = selectedProduct.price;
   const subtotal = itemPrice * quantity;
-  const deliveryCharge = city === 'Dhaka' ? 80 : 150;
+  const deliveryCharge = subtotal >= freeThreshold ? 0 : (city === 'Dhaka' ? insideFee : outsideFee);
   const total = Math.max(0, subtotal + deliveryCharge - appliedDiscount);
 
   const handleApplyPromo = (e: React.FormEvent) => {
@@ -166,7 +172,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
           </h2>
 
           <p className="text-xs sm:text-sm text-curator-muted mt-2 font-sans">
-            Inspect fabric & quality upon delivery. Cash on Delivery across Bangladesh.
+            {deliverySettings?.delivery_note || 'Inspect fabric & quality upon delivery. Cash on Delivery across Bangladesh.'}
           </p>
         </div>
 
@@ -181,19 +187,19 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
               <CheckCircle2 className="w-10 h-10 stroke-[2.5]" />
             </div>
 
-            <span className="text-xs font-bold uppercase tracking-widest text-curator-coral">
-              Order Placed Successfully
+            <span className="text-xs font-bold uppercase tracking-widest text-curator-coral font-mono">
+              ORDER PLACED SUCCESSFULLY
             </span>
 
             <h3 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal mt-1">
               Thank You, {fullName}!
             </h3>
 
-            <p className="text-xs sm:text-sm text-curator-muted mt-2 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-curator-muted mt-2 max-w-md mx-auto leading-relaxed font-sans">
               Order Reference: <strong className="text-curator-charcoal font-mono text-base font-bold">{orderCompleted.orderNumber}</strong>. Our concierge team will call to confirm before priority dispatch.
             </p>
 
-            {/* Customer Destination Snapshot Card matching Reference Image */}
+            {/* Customer Destination Snapshot Card */}
             <div className="mt-6 p-5 rounded-2xl bg-white border border-curator-border text-left shadow-sm space-y-3.5">
               <h4 className="text-sm font-bold text-curator-charcoal border-b border-curator-border/80 pb-2">
                 Customer Destination
@@ -231,7 +237,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                 setPhone('');
                 setAddress('');
               }}
-              className="mt-6 px-8 py-3.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider hover:bg-curator-coral-hover transition-all"
+              className="mt-6 px-8 py-3.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider hover:bg-curator-coral-hover transition-all shadow-md"
             >
               Place Another Order
             </button>
@@ -250,7 +256,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                   
                   {/* Product Cards Selector Tabs */}
                   <div className="grid grid-cols-2 gap-2.5">
-                    {products.map((prod) => {
+                    {products.slice(0, 4).map((prod) => {
                       const isCurrent = selectedProduct.id === prod.id;
                       return (
                         <button
@@ -292,7 +298,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     />
                   </div>
                   <div>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-curator-coral-light text-curator-coral font-bold">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-curator-coral-light text-curator-coral font-bold font-mono">
                       {selectedProduct.badge || 'New Drop'}
                     </span>
                     <h3 className="font-serif text-base font-bold text-curator-charcoal mt-1 line-clamp-1">
@@ -312,31 +318,33 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                 </div>
 
                 {/* Color Selector */}
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-2">
-                    Color: <span className="text-curator-coral font-semibold">{selectedColor.name}</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProduct.colors.map(color => (
-                      <button
-                        key={color.hex}
-                        type="button"
-                        onClick={() => setSelectedColor(color)}
-                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all ${
-                          selectedColor.hex === color.hex
-                            ? 'border-curator-coral bg-curator-coral text-white shadow-sm'
-                            : 'border-curator-border bg-white text-curator-charcoal hover:border-curator-muted'
-                        }`}
-                      >
-                        <span
-                          className="w-3.5 h-3.5 rounded-full inline-block border border-white/40"
-                          style={{ backgroundColor: color.hex }}
-                        />
-                        <span>{color.name}</span>
-                      </button>
-                    ))}
+                {selectedProduct.colors && selectedProduct.colors.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-2">
+                      Color: <span className="text-curator-coral font-semibold">{selectedColor.name}</span>
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProduct.colors.map(color => (
+                        <button
+                          key={color.hex}
+                          type="button"
+                          onClick={() => setSelectedColor(color)}
+                          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border text-xs font-medium transition-all ${
+                            selectedColor.hex === color.hex
+                              ? 'border-curator-coral bg-curator-coral text-white shadow-sm'
+                              : 'border-curator-border bg-white text-curator-charcoal hover:border-curator-muted'
+                          }`}
+                        >
+                          <span
+                            className="w-3.5 h-3.5 rounded-full inline-block border border-white/40"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                          <span>{color.name}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Size Selector */}
                 <div>
@@ -344,7 +352,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     Select Size
                   </label>
                   <div className="grid grid-cols-4 gap-2">
-                    {selectedProduct.sizes.map(size => (
+                    {(selectedProduct.sizes && selectedProduct.sizes.length > 0 ? selectedProduct.sizes : ['S (36)', 'M (38)', 'L (40)', 'XL (42)']).map(size => (
                       <button
                         key={size}
                         type="button"
@@ -478,7 +486,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                     )}
                   </div>
 
-                  {/* Delivery Location Selection */}
+                  {/* Dynamic Delivery Location Selection */}
                   <div>
                     <label className="block text-xs font-semibold text-curator-charcoal mb-1">
                       Delivery Location <span className="text-curator-coral">*</span>
@@ -498,7 +506,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                           onChange={() => setCity('Dhaka')}
                           className="accent-curator-coral"
                         />
-                        <span className="text-xs text-curator-charcoal font-medium">Inside Dhaka (৳80)</span>
+                        <span className="text-xs text-curator-charcoal font-medium">Inside Dhaka (৳{insideFee})</span>
                       </label>
 
                       <label
@@ -515,7 +523,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
                           onChange={() => setCity('Outside')}
                           className="accent-curator-coral"
                         />
-                        <span className="text-xs text-curator-charcoal font-medium">Outside Dhaka (৳150)</span>
+                        <span className="text-xs text-curator-charcoal font-medium">Outside Dhaka (৳{outsideFee})</span>
                       </label>
                     </div>
                   </div>
@@ -585,7 +593,9 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
 
                     <div className="flex justify-between text-curator-muted">
                       <span>Delivery Fee ({city === 'Dhaka' ? 'Inside Dhaka' : 'Outside Dhaka'}):</span>
-                      <span className="font-semibold font-mono text-curator-charcoal">৳{deliveryCharge}</span>
+                      <span className="font-semibold font-mono text-curator-charcoal">
+                        {deliveryCharge === 0 ? 'FREE' : `৳${deliveryCharge}`}
+                      </span>
                     </div>
 
                     {appliedDiscount > 0 && (

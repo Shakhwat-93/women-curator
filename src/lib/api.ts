@@ -1,146 +1,769 @@
-import { supabase, isSupabaseConfigured } from './supabase';
-import { Product, Order, OrderItem } from '../types';
+import { supabase } from './supabase';
+import {
+  Product,
+  Order,
+  Category,
+  Collection,
+  HomepageSection,
+  HeroSlide,
+  Testimonial,
+  AnnouncementBar,
+  NewsletterSubscriber,
+  NavigationItem,
+  SiteSettings,
+  DeliverySettings
+} from '../types';
 import { SEED_PRODUCTS } from '../data/seedData';
 
-const LOCAL_STORAGE_ORDERS_KEY = 'women_curator_orders';
-
+// -------------------------------------------------------------
+// 1. PRODUCT SERVICE
+// -------------------------------------------------------------
 export const productService = {
-  async getFeaturedProducts(): Promise<Product[]> {
-    if (!isSupabaseConfigured) {
-      return SEED_PRODUCTS;
-    }
-
+  async getProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
         .order('sort_order', { ascending: true })
-        .limit(4);
+        .order('created_at', { ascending: false });
 
-      if (error || !data || data.length === 0) {
-        console.warn('Supabase products fetch fallback:', error?.message);
-        return SEED_PRODUCTS;
-      }
-
-      return data as Product[];
+      if (error) throw error;
+      if (data && data.length > 0) return data as Product[];
     } catch (err) {
-      console.warn('Supabase connection exception, using seed data:', err);
-      return SEED_PRODUCTS;
+      console.warn('Supabase getProducts failed, using seed data fallback:', err);
     }
+    return SEED_PRODUCTS;
   },
 
-  async getAllProducts(): Promise<Product[]> {
-    if (!isSupabaseConfigured) {
-      return SEED_PRODUCTS;
-    }
-
+  async getFeaturedProducts(): Promise<Product[]> {
     try {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('is_active', true)
+        .eq('is_featured', true)
+        .eq('status', 'active')
         .order('sort_order', { ascending: true });
 
-      if (error || !data || data.length === 0) {
-        return SEED_PRODUCTS;
-      }
-
-      return data as Product[];
+      if (error) throw error;
+      if (data && data.length > 0) return data as Product[];
     } catch (err) {
-      console.warn('Supabase fallback:', err);
-      return SEED_PRODUCTS;
+      console.warn('Supabase getFeaturedProducts error:', err);
     }
+    return SEED_PRODUCTS.filter(p => p.is_featured);
   },
 
-  async getProductBySlug(slug: string): Promise<Product | null> {
-    const products = await this.getAllProducts();
-    return products.find(p => p.slug === slug) || null;
-  }
-};
-
-export const orderService = {
-  async createOrder(orderData: Omit<Order, 'id' | 'created_at'>): Promise<{ success: boolean; orderId: string; error?: string }> {
-    const orderNumber = orderData.order_number || `WC-${Date.now().toString().slice(-6)}`;
-    
-    // Save to local storage for persistent guest history
+  async getProductById(id: string): Promise<Product | null> {
     try {
-      const existing = JSON.parse(localStorage.getItem(LOCAL_STORAGE_ORDERS_KEY) || '[]');
-      const savedOrder = {
-        ...orderData,
-        id: `ord_${Date.now()}`,
-        order_number: orderNumber,
-        created_at: new Date().toISOString()
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (data) return data as Product;
+    } catch (err) {
+      console.warn(`Supabase getProductById(${id}) error:`, err);
+    }
+    return SEED_PRODUCTS.find(p => p.id === id) || null;
+  },
+
+  async saveProduct(product: Partial<Product>): Promise<{ success: boolean; data?: Product; error?: string }> {
+    try {
+      const payload = {
+        ...product,
+        updated_at: new Date().toISOString()
       };
-      existing.unshift(savedOrder);
-      localStorage.setItem(LOCAL_STORAGE_ORDERS_KEY, JSON.stringify(existing));
-    } catch (e) {
-      console.warn('Could not cache order locally:', e);
-    }
 
-    if (!isSupabaseConfigured) {
-      // Return successful simulation with unique order ID
-      await new Promise(res => setTimeout(res, 600));
-      return { success: true, orderId: orderNumber };
-    }
-
-    try {
-      // 1. Insert order record
-      const { data: orderResult, error: orderError } = await supabase
-        .from('orders')
-        .insert([
-          {
-            customer_name: orderData.customer_name,
-            phone: orderData.phone,
-            email: orderData.email,
-            address: orderData.address,
-            city: orderData.city,
-            area: orderData.area,
-            postal_code: orderData.postal_code,
-            notes: orderData.notes,
-            payment_method: orderData.payment_method,
-            subtotal: orderData.subtotal,
-            delivery_charge: orderData.delivery_charge,
-            discount: orderData.discount,
-            total: orderData.total,
-            status: orderData.status || 'pending',
-            order_number: orderNumber
-          }
-        ])
+      const { data, error } = await supabase
+        .from('products')
+        .upsert(payload)
         .select()
         .single();
 
-      if (orderError || !orderResult) {
-        console.warn('Supabase order insert notice (using fallback order tracking):', orderError?.message);
-        return { success: true, orderId: orderNumber };
-      }
+      if (error) throw error;
+      return { success: true, data: data as Product };
+    } catch (err: any) {
+      console.error('Save product error:', err);
+      return { success: false, error: err.message || 'Failed to save product' };
+    }
+  },
 
-      // 2. Insert order items
-      if (orderData.items && orderData.items.length > 0) {
-        const orderItemsPayload = orderData.items.map((item: OrderItem) => ({
-          order_id: orderResult.id,
-          product_id: item.product_id,
-          product_name: item.product_name,
-          color_name: item.color_name,
-          size: item.size,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          subtotal: item.subtotal
+  async deleteProduct(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to delete product' };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 2. ORDER SERVICE
+// -------------------------------------------------------------
+export const orderService = {
+  async getOrders(): Promise<Order[]> {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) return data as Order[];
+    } catch (err) {
+      console.warn('Supabase getOrders error, falling back to localStorage:', err);
+    }
+
+    const localOrders = localStorage.getItem('women_curator_orders');
+    return localOrders ? JSON.parse(localOrders) : [];
+  },
+
+  async getOrderById(id: string): Promise<Order | null> {
+    try {
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          items:order_items(*)
+        `)
+        .eq('id', id)
+        .single();
+
+      if (error) throw error;
+      if (data) return data as Order;
+    } catch (err) {
+      console.warn(`Supabase getOrderById(${id}) error:`, err);
+    }
+    return null;
+  },
+
+  async updateOrderStatus(id: string, status: Order['status']): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status, updated_at: new Date().toISOString() })
+        .eq('id', id);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message || 'Failed to update order status' };
+    }
+  },
+
+  async createOrder(order: Partial<Order>): Promise<{ success: boolean; orderId?: string; error?: string }> {
+    try {
+      const orderPayload = {
+        order_number: order.order_number || `WC-${Date.now().toString().slice(-6)}`,
+        customer_name: order.customer_name,
+        phone: order.phone,
+        email: order.email || '',
+        address: order.address,
+        city: order.city,
+        area: order.area || '',
+        postal_code: order.postal_code || '',
+        notes: order.notes || '',
+        payment_method: order.payment_method || 'Cash on Delivery',
+        subtotal: order.subtotal || 0,
+        delivery_charge: order.delivery_charge || 0,
+        discount: order.discount || 0,
+        total: order.total || 0,
+        status: order.status || 'pending'
+      };
+
+      const { data: insertedOrder, error: orderError } = await supabase
+        .from('orders')
+        .insert(orderPayload)
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      if (order.items && order.items.length > 0 && insertedOrder?.id) {
+        const itemRows = order.items.map(it => ({
+          order_id: insertedOrder.id,
+          product_id: it.product_id,
+          product_name: it.product_name,
+          product_image: it.product_image || '',
+          color_name: it.color_name || '',
+          size: it.size || '',
+          quantity: it.quantity || 1,
+          unit_price: it.unit_price,
+          subtotal: it.subtotal
         }));
 
-        const { error: itemsError } = await supabase
-          .from('order_items')
-          .insert(orderItemsPayload);
-
-        if (itemsError) {
-          console.warn('Notice on order items insert:', itemsError.message);
-        }
+        await supabase.from('order_items').insert(itemRows);
       }
 
-      return { success: true, orderId: orderResult.order_number || orderNumber };
+      // Sync local backup
+      const current = JSON.parse(localStorage.getItem('women_curator_orders') || '[]');
+      localStorage.setItem('women_curator_orders', JSON.stringify([insertedOrder, ...current]));
+
+      return { success: true, orderId: insertedOrder.order_number };
     } catch (err: any) {
-      console.warn('Order submission fallback active:', err?.message);
-      return { success: true, orderId: orderNumber };
+      console.error('Supabase createOrder failed, storing locally:', err);
+      const fallbackNumber = order.order_number || `WC-${Date.now().toString().slice(-6)}`;
+      const fallbackOrder = {
+        ...order,
+        id: `local-${Date.now()}`,
+        order_number: fallbackNumber,
+        created_at: new Date().toISOString()
+      };
+      const current = JSON.parse(localStorage.getItem('women_curator_orders') || '[]');
+      localStorage.setItem('women_curator_orders', JSON.stringify([fallbackOrder, ...current]));
+      return { success: true, orderId: fallbackNumber };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 3. CATEGORY & COLLECTION SERVICES
+// -------------------------------------------------------------
+export const categoryService = {
+  async getCategories(): Promise<Category[]> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as Category[];
+    } catch (err) {
+      console.warn('getCategories error:', err);
+    }
+    return [
+      { id: 'cat-tunics', name: 'Tunics & Kurtis', slug: 'tunics', sort_order: 1, is_active: true },
+      { id: 'cat-peplums', name: 'Statement Peplums', slug: 'peplums', sort_order: 2, is_active: true },
+      { id: 'cat-shirts', name: 'Casual Shirts', slug: 'shirts', sort_order: 3, is_active: true },
+      { id: 'cat-coords', name: 'Co-ord Sets', slug: 'coords', sort_order: 4, is_active: true }
+    ];
+  },
+
+  async saveCategory(category: Partial<Category>): Promise<{ success: boolean; data?: Category; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('categories')
+        .upsert(category)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data: data as Category };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteCategory(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+export const collectionService = {
+  async getCollections(): Promise<Collection[]> {
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as Collection[];
+    } catch (err) {
+      console.warn('getCollections error:', err);
+    }
+    return [
+      { id: 'col-autumn-2026', name: 'Autumn Capsule 2026', slug: 'autumn-2026', accent_color: '#DE4F3C', is_featured: true, is_active: true, sort_order: 1 },
+      { id: 'col-festive', name: 'Festive Muse Edition', slug: 'festive-muse', accent_color: '#BD4857', is_featured: true, is_active: true, sort_order: 2 }
+    ];
+  },
+
+  async saveCollection(collection: Partial<Collection>): Promise<{ success: boolean; data?: Collection; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .upsert(collection)
+        .select()
+        .single();
+      if (error) throw error;
+      return { success: true, data: data as Collection };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteCollection(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('collections').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 4. HOMEPAGE SECTION CMS SERVICE
+// -------------------------------------------------------------
+export const homepageService = {
+  async getSections(): Promise<HomepageSection[]> {
+    try {
+      const { data, error } = await supabase
+        .from('homepage_sections')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as HomepageSection[];
+    } catch (err) {
+      console.warn('getSections error:', err);
+    }
+    return [
+      { id: 'sec-hero', section_key: 'hero', title: 'Hero Carousel & Banner', subtitle: 'New Drop 2026 Showcase', sort_order: 1, is_enabled: true },
+      { id: 'sec-products', section_key: 'products', title: 'Curated 4 Drops', subtitle: 'Signature Collection Grid', sort_order: 2, is_enabled: true },
+      { id: 'sec-order', section_key: 'direct_order', title: 'Express Direct Checkout', subtitle: 'Cash on Delivery In-Page Order Form', sort_order: 3, is_enabled: true },
+      { id: 'sec-editorial', section_key: 'editorial', title: 'Brand Story & Detail Spread', subtitle: 'Silhouette, Fabric & Quality', sort_order: 4, is_enabled: true },
+      { id: 'sec-benefits', section_key: 'benefits', title: 'Why Women Curator', subtitle: 'Value Pillars & Guarantees', sort_order: 5, is_enabled: true },
+      { id: 'sec-testimonials', section_key: 'testimonials', title: 'Voices of the Muse', subtitle: 'Verified Customer Reviews', sort_order: 6, is_enabled: true }
+    ];
+  },
+
+  async updateSectionsOrder(sections: HomepageSection[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      const updates = sections.map((s, idx) => ({
+        ...s,
+        sort_order: idx + 1,
+        updated_at: new Date().toISOString()
+      }));
+
+      const { error } = await supabase
+        .from('homepage_sections')
+        .upsert(updates);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 5. HERO SLIDES SERVICE
+// -------------------------------------------------------------
+export const heroService = {
+  async getSlides(): Promise<HeroSlide[]> {
+    try {
+      const { data, error } = await supabase
+        .from('hero_slides')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as HeroSlide[];
+    } catch (err) {
+      console.warn('getSlides error:', err);
+    }
+    return [
+      {
+        id: 'slide-1',
+        title: 'New Drop 2026',
+        subtitle: 'Style • Comfort • Quality • Affordability',
+        badge: 'New Drop',
+        image_url: '/assets/hero-banner-3models.jpg',
+        cta_text: 'Direct Order Now',
+        cta_link: '#order-form',
+        secondary_cta_text: 'View 4 Drops',
+        secondary_cta_link: '#products',
+        sort_order: 1,
+        is_active: true,
+        settings: { primaryBlobColor: '#DE4F3C', secondaryBlobColor: '#F4A999', bgColor: '#FAF5EE' }
+      },
+      {
+        id: 'slide-2',
+        title: 'Embroidered Flare Tunic',
+        subtitle: 'Effortlessly Beautiful & Comfortable',
+        badge: 'Trending',
+        image_url: '/assets/model-magenta-banner.jpg',
+        cta_text: 'Direct Order Now',
+        cta_link: '#order-form',
+        secondary_cta_text: 'View 4 Drops',
+        secondary_cta_link: '#products',
+        sort_order: 2,
+        is_active: true,
+        settings: { primaryBlobColor: '#DE4F3C', secondaryBlobColor: '#F4A999', bgColor: '#FAF5EE' }
+      },
+      {
+        id: 'slide-3',
+        title: 'Monochrome Noir Tunic',
+        subtitle: 'Carefully Curated Details',
+        badge: 'Exclusive',
+        image_url: '/assets/model-black-banner.jpg',
+        cta_text: 'Direct Order Now',
+        cta_link: '#order-form',
+        secondary_cta_text: 'View 4 Drops',
+        secondary_cta_link: '#products',
+        sort_order: 3,
+        is_active: true,
+        settings: { primaryBlobColor: '#201C1A', secondaryBlobColor: '#FAF5EE', bgColor: '#FAF5EE' }
+      }
+    ];
+  },
+
+  async saveSlide(slide: Partial<HeroSlide>): Promise<{ success: boolean; data?: HeroSlide; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('hero_slides')
+        .upsert(slide)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: data as HeroSlide };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteSlide(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('hero_slides').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 6. TESTIMONIAL SERVICE
+// -------------------------------------------------------------
+export const testimonialService = {
+  async getTestimonials(): Promise<Testimonial[]> {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as Testimonial[];
+    } catch (err) {
+      console.warn('getTestimonials error:', err);
+    }
+    return [
+      {
+        id: 'test-1',
+        customer_name: 'Ayesha Siddika',
+        city: 'Dhaka',
+        review: 'অর্ডারের পরের দিনই ডেলিভারি পেয়েছি। ফেব্রিকের কোয়ালিটি এবং জামার ফিটিং এক কথায় অসাধারণ! বিশেষ করে হাতা ও গলার সুতার কাজ খুবই নিখুঁত।',
+        rating: 5.0,
+        is_featured: true,
+        is_active: true,
+        sort_order: 1
+      },
+      {
+        id: 'test-2',
+        customer_name: 'Nusrat Jahan',
+        city: 'Chittagong',
+        review: 'The fabric is so breathable and luxurious. Exactly as shown in the photoshoot. Will definitely order from the next drop as well!',
+        rating: 5.0,
+        is_featured: true,
+        is_active: true,
+        sort_order: 2
+      },
+      {
+        id: 'test-3',
+        customer_name: 'Samira Rahman',
+        city: 'Sylhet',
+        review: 'ক্যাশ অন ডেলিভারিতে চেক করে নেওয়ার সুযোগ থাকায় নির্ভয়ে অর্ডার করেছিলাম। কালার ও ফিটিং পারফেক্ট। ১০০% রেকমেন্ডেড!',
+        rating: 5.0,
+        is_featured: true,
+        is_active: true,
+        sort_order: 3
+      }
+    ];
+  },
+
+  async saveTestimonial(testimonial: Partial<Testimonial>): Promise<{ success: boolean; data?: Testimonial; error?: string }> {
+    try {
+      const { data, error } = await supabase
+        .from('testimonials')
+        .upsert(testimonial)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return { success: true, data: data as Testimonial };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async deleteTestimonial(id: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase.from('testimonials').delete().eq('id', id);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 7. MARKETING & ANNOUNCEMENTS
+// -------------------------------------------------------------
+export const marketingService = {
+  async getAnnouncement(): Promise<AnnouncementBar | null> {
+    try {
+      const { data, error } = await supabase
+        .from('announcement_bar')
+        .select('*')
+        .eq('is_active', true)
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return data as AnnouncementBar;
+    } catch (err) {
+      console.warn('getAnnouncement error:', err);
+    }
+    return {
+      id: 'ann-1',
+      text: '✨ Autumn Capsule 2026 Drop is Live • Free Delivery on orders over ৳2,500 with code CURATOR10',
+      link_url: '#order-form',
+      bg_color: '#DE4F3C',
+      text_color: '#FFFFFF',
+      is_active: true
+    };
+  },
+
+  async saveAnnouncement(bar: Partial<AnnouncementBar>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('announcement_bar')
+        .upsert(bar);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async getSubscribers(): Promise<NewsletterSubscriber[]> {
+    try {
+      const { data, error } = await supabase
+        .from('newsletter_subscribers')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      if (data) return data as NewsletterSubscriber[];
+    } catch (err) {
+      console.warn('getSubscribers error:', err);
+    }
+    return [];
+  },
+
+  async subscribe(email: string, name?: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('newsletter_subscribers')
+        .insert({ email, name, status: 'subscribed' });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 8. NAVIGATION SERVICE
+// -------------------------------------------------------------
+export const navigationService = {
+  async getNavigation(): Promise<NavigationItem[]> {
+    try {
+      const { data, error } = await supabase
+        .from('navigation_items')
+        .select('*')
+        .order('sort_order', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data as NavigationItem[];
+    } catch (err) {
+      console.warn('getNavigation error:', err);
+    }
+    return [
+      { id: '1', label: 'New Collection', url: '#products', sort_order: 1, is_active: true },
+      { id: '2', label: 'Fabric & Details', url: '#editorial', sort_order: 2, is_active: true },
+      { id: '3', label: 'Customer Reviews', url: '#reviews', sort_order: 3, is_active: true },
+      { id: '4', label: 'Direct Order', url: '#order-form', sort_order: 4, is_active: true }
+    ];
+  },
+
+  async saveNavigation(items: NavigationItem[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('navigation_items')
+        .upsert(items);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 9. SITE SETTINGS & DELIVERY SERVICE
+// -------------------------------------------------------------
+export const settingsService = {
+  async getSiteSettings(): Promise<SiteSettings | null> {
+    try {
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return data as SiteSettings;
+    } catch (err) {
+      console.warn('getSiteSettings error:', err);
+    }
+    return {
+      store_name: 'Women Curator',
+      tagline: 'Style • Comfort • Quality • Affordability',
+      phone: '01540400247',
+      email: 'contact@womencurator.com',
+      address: 'Gulshan, Dhaka, Bangladesh',
+      whatsapp_number: '01540400247',
+      currency: 'BDT',
+      currency_symbol: '৳',
+      brand_story: 'Women Curator is a fashion brand dedicated to bringing modern women stylish, elegant, and comfortable clothing at affordable prices.'
+    };
+  },
+
+  async saveSiteSettings(settings: Partial<SiteSettings>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('site_settings')
+        .upsert({ ...settings, id: 'global-settings' });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async getDeliverySettings(): Promise<DeliverySettings | null> {
+    try {
+      const { data, error } = await supabase
+        .from('delivery_settings')
+        .select('*')
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return data as DeliverySettings;
+    } catch (err) {
+      console.warn('getDeliverySettings error:', err);
+    }
+    return {
+      inside_dhaka_fee: 80,
+      outside_dhaka_fee: 150,
+      free_delivery_threshold: 2500,
+      is_active: true,
+      delivery_note: 'পণ্য হাতে পেয়ে চেক করে সম্পূর্ণ মূল্য পরিশোধ করুন (ক্যাশ অন ডেলিভারি)।'
+    };
+  },
+
+  async saveDeliverySettings(settings: Partial<DeliverySettings>): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('delivery_settings')
+        .upsert({ ...settings, id: 'delivery-config' });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  }
+};
+
+// -------------------------------------------------------------
+// 10. STORAGE & MEDIA SERVICE
+// -------------------------------------------------------------
+export const mediaService = {
+  async uploadFile(file: File, bucket: 'product-images' | 'hero-images' | 'site-assets' = 'product-images'): Promise<{ success: boolean; url?: string; error?: string }> {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(bucket)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: publicUrlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(filePath);
+
+      return { success: true, url: publicUrlData.publicUrl };
+    } catch (err: any) {
+      console.error('File upload error:', err);
+      return { success: false, error: err.message || 'Upload failed' };
+    }
+  },
+
+  async listMedia(bucket: 'product-images' | 'hero-images' | 'site-assets' = 'product-images') {
+    try {
+      const { data, error } = await supabase.storage.from(bucket).list('', {
+        limit: 100,
+        offset: 0,
+        sortBy: { column: 'created_at', order: 'desc' }
+      });
+
+      if (error) throw error;
+      return (data || []).map(f => ({
+        name: f.name,
+        size: f.metadata?.size || 0,
+        created_at: f.created_at,
+        url: supabase.storage.from(bucket).getPublicUrl(f.name).data.publicUrl
+      }));
+    } catch (err) {
+      console.warn('listMedia error:', err);
+      return [];
     }
   }
 };

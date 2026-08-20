@@ -2,54 +2,69 @@ import React, { useState, useEffect } from 'react';
 import { ArrowRight, Sparkles, ShoppingBag, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OrganicBackground } from '../common/OrganicBackground';
+import { HeroSlide } from '../../types';
 
 interface HeroProps {
+  slides?: HeroSlide[];
   onShopCollection: () => void;
   onDirectOrder: () => void;
 }
 
-const HERO_SLIDES = [
+const DEFAULT_SLIDES: HeroSlide[] = [
   {
-    id: 1,
-    image: '/assets/hero-banner-3models.jpg',
+    id: '1',
+    image_url: '/assets/hero-banner-3models.jpg',
     title: 'New Drop 2026',
     subtitle: 'Style • Comfort • Quality • Affordability',
-    tag: 'New Collection'
+    badge: 'New Collection',
+    cta_text: 'Direct Order Now',
+    sort_order: 1,
+    is_active: true
   },
   {
-    id: 2,
-    image: '/assets/model-magenta-banner.jpg',
+    id: '2',
+    image_url: '/assets/model-magenta-banner.jpg',
     title: 'Embroidered Flare Tunic',
     subtitle: 'Effortlessly Beautiful & Comfortable',
-    tag: 'Trending'
+    badge: 'Trending',
+    cta_text: 'Direct Order Now',
+    sort_order: 2,
+    is_active: true
   },
   {
-    id: 3,
-    image: '/assets/model-black-banner.jpg',
+    id: '3',
+    image_url: '/assets/model-black-banner.jpg',
     title: 'Monochrome Noir Tunic',
     subtitle: 'Carefully Curated Details',
-    tag: 'Exclusive'
+    badge: 'Exclusive',
+    cta_text: 'Direct Order Now',
+    sort_order: 3,
+    is_active: true
   }
 ];
 
-export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) => {
+export const Hero: React.FC<HeroProps> = ({ slides = DEFAULT_SLIDES, onShopCollection, onDirectOrder }) => {
+  const activeSlides = slides && slides.length > 0 ? slides.filter(s => s.is_active) : DEFAULT_SLIDES;
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
+    if (activeSlides.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
+      setCurrentSlide(prev => (prev + 1) % activeSlides.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [activeSlides.length]);
+
+  const slide = activeSlides[currentSlide] || activeSlides[0] || DEFAULT_SLIDES[0];
 
   const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
+    setCurrentSlide(prev => (prev + 1) % activeSlides.length);
   };
 
   const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setCurrentSlide(prev => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+    setCurrentSlide(prev => (prev - 1 + activeSlides.length) % activeSlides.length);
   };
 
   return (
@@ -74,9 +89,9 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
             <div className="relative w-full aspect-[16/10.5] overflow-hidden bg-[#FDFBF7]">
               <AnimatePresence mode="wait">
                 <motion.img
-                  key={HERO_SLIDES[currentSlide].id}
-                  src={HERO_SLIDES[currentSlide].image}
-                  alt={HERO_SLIDES[currentSlide].title}
+                  key={slide.id || currentSlide}
+                  src={slide.image_url}
+                  alt={slide.title}
                   initial={{ opacity: 0, scale: 1.05 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.98 }}
@@ -86,47 +101,53 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               </AnimatePresence>
 
               {/* Prev / Next controls */}
-              <button
-                onClick={handlePrev}
-                aria-label="Previous slide"
-                className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm text-curator-charcoal flex items-center justify-center shadow-md active:scale-90 z-20"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
+              {activeSlides.length > 1 && (
+                <>
+                  <button
+                    onClick={handlePrev}
+                    aria-label="Previous slide"
+                    className="absolute left-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm text-curator-charcoal flex items-center justify-center shadow-md active:scale-90 z-20"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
 
-              <button
-                onClick={handleNext}
-                aria-label="Next slide"
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm text-curator-charcoal flex items-center justify-center shadow-md active:scale-90 z-20"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                  <button
+                    onClick={handleNext}
+                    aria-label="Next slide"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/80 backdrop-blur-sm text-curator-charcoal flex items-center justify-center shadow-md active:scale-90 z-20"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </>
+              )}
 
               {/* Top Floating Badge */}
               <div className="absolute top-3 right-3 z-20 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full shadow-md border border-curator-blush/40 flex items-center gap-1.5">
                 <span className="w-1.5 h-1.5 rounded-full bg-curator-coral animate-ping" />
                 <span className="text-[10px] font-bold text-curator-charcoal font-serif">
-                  {HERO_SLIDES[currentSlide].tag}
+                  {slide.badge || 'New Drop'}
                 </span>
               </div>
 
               {/* Slide Dots Indicator */}
-              <div className="absolute bottom-2.5 inset-x-0 flex justify-center items-center gap-1.5 z-20">
-                {HERO_SLIDES.map((slide, idx) => (
-                  <button
-                    key={slide.id}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCurrentSlide(idx);
-                    }}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      currentSlide === idx
-                        ? 'w-6 bg-curator-coral shadow-sm'
-                        : 'w-1.5 bg-white/80'
-                    }`}
-                  />
-                ))}
-              </div>
+              {activeSlides.length > 1 && (
+                <div className="absolute bottom-2.5 inset-x-0 flex justify-center items-center gap-1.5 z-20">
+                  {activeSlides.map((s, idx) => (
+                    <button
+                      key={s.id || idx}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentSlide(idx);
+                      }}
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                        currentSlide === idx
+                          ? 'w-6 bg-curator-coral shadow-sm'
+                          : 'w-1.5 bg-white/80'
+                      }`}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -137,7 +158,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               className="py-3.5 px-4 rounded-full bg-curator-coral text-white font-sans text-xs font-bold shadow-lg hover:bg-curator-coral-hover active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
               <ShoppingBag className="w-3.5 h-3.5" />
-              <span>Direct Order</span>
+              <span>{slide.cta_text || 'Direct Order'}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
 
@@ -146,7 +167,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               className="py-3.5 px-4 rounded-full bg-white text-curator-charcoal border border-curator-border font-sans text-xs font-semibold shadow-sm hover:bg-curator-surface-peach active:scale-95 transition-all flex items-center justify-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-curator-coral" />
-              <span>View 4 Drops</span>
+              <span>{slide.secondary_cta_text || 'View 4 Drops'}</span>
             </button>
           </div>
         </div>
@@ -231,7 +252,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                 className="bg-curator-coral text-white font-sans text-sm font-bold tracking-wide py-4 px-8 rounded-full shadow-lg hover:shadow-curator-glow hover:bg-curator-coral-hover active:scale-[0.98] transition-all duration-300 flex items-center gap-2.5 group"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>Direct Order Now</span>
+                <span>{slide.cta_text || 'Direct Order Now'}</span>
                 <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
               </button>
 
@@ -240,7 +261,7 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                 className="inline-flex items-center gap-2 py-4 px-6 rounded-full bg-white/90 hover:bg-white text-curator-charcoal hover:text-curator-coral text-xs font-semibold border border-curator-border shadow-sm transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5 text-curator-coral" />
-                <span>View 4 Drops</span>
+                <span>{slide.secondary_cta_text || 'View 4 Drops'}</span>
               </button>
             </div>
           </motion.div>
@@ -259,9 +280,9 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
               <div className="relative w-full aspect-[16/10.5] overflow-hidden">
                 <AnimatePresence mode="wait">
                   <motion.img
-                    key={HERO_SLIDES[currentSlide].id}
-                    src={HERO_SLIDES[currentSlide].image}
-                    alt={HERO_SLIDES[currentSlide].title}
+                    key={slide.id || currentSlide}
+                    src={slide.image_url}
+                    alt={slide.title}
                     initial={{ opacity: 0, scale: 1.04 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.98 }}
@@ -271,45 +292,51 @@ export const Hero: React.FC<HeroProps> = ({ onShopCollection, onDirectOrder }) =
                 </AnimatePresence>
 
                 {/* Arrow navigation buttons on hover */}
-                <button
-                  onClick={handlePrev}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-curator-charcoal flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-20"
-                >
-                  <ChevronLeft className="w-5 h-5" />
-                </button>
+                {activeSlides.length > 1 && (
+                  <>
+                    <button
+                      onClick={handlePrev}
+                      className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-curator-charcoal flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-20"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
 
-                <button
-                  onClick={handleNext}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-curator-charcoal flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-20"
-                >
-                  <ChevronRight className="w-5 h-5" />
-                </button>
+                    <button
+                      onClick={handleNext}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-curator-charcoal flex items-center justify-center shadow-lg transition-all opacity-0 group-hover:opacity-100 z-20"
+                    >
+                      <ChevronRight className="w-5 h-5" />
+                    </button>
+                  </>
+                )}
 
                 {/* Overlaid Badges */}
                 <div className="absolute top-6 right-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-curator-blush/40 flex items-center gap-2 z-20">
                   <span className="w-2 h-2 rounded-full bg-curator-coral animate-ping" />
                   <span className="text-xs font-bold text-curator-charcoal font-serif">
-                    {HERO_SLIDES[currentSlide].tag}
+                    {slide.badge || 'New Drop'}
                   </span>
                 </div>
 
                 {/* Bottom Slider Dots */}
-                <div className="absolute bottom-4 inset-x-0 flex justify-center items-center gap-2 z-20">
-                  {HERO_SLIDES.map((slide, idx) => (
-                    <button
-                      key={slide.id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setCurrentSlide(idx);
-                      }}
-                      className={`h-2 rounded-full transition-all duration-400 ${
-                        currentSlide === idx
-                          ? 'w-8 bg-curator-coral shadow-md'
-                          : 'w-2 bg-white/75 hover:bg-white'
-                      }`}
-                    />
-                  ))}
-                </div>
+                {activeSlides.length > 1 && (
+                  <div className="absolute bottom-4 inset-x-0 flex justify-center items-center gap-2 z-20">
+                    {activeSlides.map((s, idx) => (
+                      <button
+                        key={s.id || idx}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentSlide(idx);
+                        }}
+                        className={`h-2 rounded-full transition-all duration-400 ${
+                          currentSlide === idx
+                            ? 'w-8 bg-curator-coral shadow-md'
+                            : 'w-2 bg-white/75 hover:bg-white'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </motion.div>

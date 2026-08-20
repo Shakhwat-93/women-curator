@@ -66,7 +66,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     size?: string
   ) => {
     const selectedColor = color || product.colors[0];
-    const selectedSize = size || product.sizes[0] || 'M (38)';
+    const selectedSize = size || product.sizes?.[0] || 'M (38)';
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(
@@ -94,7 +94,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     size?: string
   ) => {
     const selectedColor = color || product.colors[0];
-    const selectedSize = size || product.sizes[0] || 'M (38)';
+    const selectedSize = size || product.sizes?.[0] || 'M (38)';
 
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(

@@ -24,8 +24,8 @@ export const SearchModal: React.FC<SearchModalProps> = ({
     ? products.filter(
         p =>
           p.name.toLowerCase().includes(query.toLowerCase()) ||
-          p.subtitle.toLowerCase().includes(query.toLowerCase()) ||
-          p.description.toLowerCase().includes(query.toLowerCase()) ||
+          (p.subtitle && p.subtitle.toLowerCase().includes(query.toLowerCase())) ||
+          (p.description && p.description.toLowerCase().includes(query.toLowerCase())) ||
           (p.category_name && p.category_name.toLowerCase().includes(query.toLowerCase()))
       )
     : products;

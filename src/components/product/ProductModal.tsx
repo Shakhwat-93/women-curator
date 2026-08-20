@@ -25,7 +25,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   useEffect(() => {
     if (product) {
       setSelectedColor(product.colors[0]);
-      setSelectedSize(product.sizes[0] || 'M (38)');
+      setSelectedSize(product.sizes?.[0] || 'M (38)');
       setActiveImage(product.image_url);
     }
   }, [product]);
@@ -200,7 +200,7 @@ export const ProductModal: React.FC<ProductModalProps> = ({
                     </label>
                   </div>
                   <div className="grid grid-cols-4 gap-2">
-                    {product.sizes.map(size => (
+                    {(product.sizes || ['S (36)', 'M (38)', 'L (40)', 'XL (42)']).map(size => (
                       <button
                         key={size}
                         onClick={() => setSelectedSize(size)}

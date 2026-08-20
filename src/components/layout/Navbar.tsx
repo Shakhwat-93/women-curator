@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Phone } from 'lucide-react';
+import { ShoppingBag, Phone, Lock } from 'lucide-react';
+import { NavigationItem, SiteSettings } from '../../types';
 
 interface NavbarProps {
   onOrderNow: () => void;
+  navigationItems?: NavigationItem[];
+  siteSettings?: SiteSettings | null;
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ onOrderNow }) => {
+export const Navbar: React.FC<NavbarProps> = ({ onOrderNow, navigationItems, siteSettings }) => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -15,6 +18,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOrderNow }) => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const links = navigationItems && navigationItems.length > 0 ? navigationItems.filter(i => i.is_active) : [
+    { id: '1', label: 'New Collection', url: '#products' },
+    { id: '2', label: 'Fabric & Details', url: '#editorial' },
+    { id: '3', label: 'Customer Reviews', url: '#reviews' },
+    { id: '4', label: 'Direct Order', url: '#order-form' }
+  ];
+
+  const phone = siteSettings?.phone || '01540400247';
 
   return (
     <header
@@ -30,51 +42,36 @@ export const Navbar: React.FC<NavbarProps> = ({ onOrderNow }) => {
           <div className="flex items-center">
             <a href="#" className="group flex items-center gap-1.5 select-none">
               <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-curator-charcoal group-hover:text-curator-coral transition-colors">
-                Women
+                {siteSettings?.store_name?.split(' ')[0] || 'Women'}
               </span>
               <span className="text-curator-coral text-xs sm:text-sm animate-pulse">✦</span>
               <span className="font-serif text-xl sm:text-2xl font-normal tracking-wide text-curator-coral">
-                Curator
+                {siteSettings?.store_name?.split(' ')[1] || 'Curator'}
               </span>
             </a>
           </div>
 
-          {/* Center Navigation Links */}
+          {/* Center Dynamic Navigation Links */}
           <nav className="hidden md:flex items-center gap-8">
-            <a
-              href="#products"
-              className="text-xs font-semibold uppercase tracking-widest text-curator-charcoal hover:text-curator-coral transition-colors"
-            >
-              New Collection
-            </a>
-            <a
-              href="#editorial"
-              className="text-xs font-semibold uppercase tracking-widest text-curator-charcoal hover:text-curator-coral transition-colors"
-            >
-              Fabric & Details
-            </a>
-            <a
-              href="#reviews"
-              className="text-xs font-semibold uppercase tracking-widest text-curator-charcoal hover:text-curator-coral transition-colors"
-            >
-              Customer Reviews
-            </a>
-            <a
-              href="#order-form"
-              className="text-xs font-semibold uppercase tracking-widest text-curator-coral font-bold transition-colors"
-            >
-              Direct Order
-            </a>
+            {links.map((item, i) => (
+              <a
+                key={item.id || i}
+                href={item.url}
+                className="text-xs font-semibold uppercase tracking-widest text-curator-charcoal hover:text-curator-coral transition-colors"
+              >
+                {item.label}
+              </a>
+            ))}
           </nav>
 
           {/* Right Action: Direct Order CTA & Helpline */}
           <div className="flex items-center gap-2 sm:gap-3">
             <a
-              href="tel:+8801540400247"
+              href={`tel:${phone}`}
               className="hidden sm:flex items-center gap-1.5 text-xs font-mono font-semibold text-curator-charcoal hover:text-curator-coral py-2 px-3.5 rounded-full bg-white border border-curator-border shadow-sm"
             >
               <Phone className="w-3.5 h-3.5 text-curator-coral" />
-              <span>01540400247</span>
+              <span>{phone}</span>
             </a>
 
             <button
@@ -84,6 +81,15 @@ export const Navbar: React.FC<NavbarProps> = ({ onOrderNow }) => {
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Order Now</span>
             </button>
+
+            {/* Admin Quick Link */}
+            <a
+              href="/admin"
+              title="Admin Portal"
+              className="p-2.5 rounded-full border border-curator-border bg-white text-curator-muted hover:text-curator-coral hover:border-curator-coral transition-colors"
+            >
+              <Lock className="w-3.5 h-3.5" />
+            </a>
           </div>
         </div>
       </div>

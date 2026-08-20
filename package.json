@@ -10,12 +10,13 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
-    "clsx": "^2.1.1",
     "canvas-confetti": "^1.9.4",
+    "clsx": "^2.1.1",
     "framer-motion": "^12.4.10",
     "lucide-react": "^1.16.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.18.2",
     "tailwind-merge": "^3.0.2"
   },
   "devDependencies": {

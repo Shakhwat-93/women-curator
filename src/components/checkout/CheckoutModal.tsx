@@ -58,11 +58,11 @@ export const CheckoutModal: React.FC = () => {
       newErrors.address = 'Please provide detailed delivery address';
     }
 
-    if (!formData.city.trim()) {
+    if (!formData.city?.trim()) {
       newErrors.city = 'Please select your delivery city';
     }
 
-    if (!formData.area.trim()) {
+    if (!formData.area?.trim()) {
       newErrors.area = 'Area/Thana is required for accurate courier dispatch';
     }
 
@@ -92,9 +92,9 @@ export const CheckoutModal: React.FC = () => {
         email: formData.email.trim(),
         address: formData.address.trim(),
         city: formData.city,
-        area: formData.area.trim(),
-        postal_code: formData.postalCode.trim(),
-        notes: formData.orderNotes.trim(),
+        area: (formData.area || '').trim(),
+        postal_code: (formData.postalCode || '').trim(),
+        notes: (formData.orderNotes || '').trim(),
         payment_method: formData.paymentMethod,
         subtotal,
         delivery_charge: deliveryCharge,
@@ -135,7 +135,7 @@ export const CheckoutModal: React.FC = () => {
   const handleChange = (field: keyof CheckoutFormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
+      setErrors((prev: Partial<Record<keyof CheckoutFormData, string>>) => ({ ...prev, [field]: undefined }));
     }
   };
 
