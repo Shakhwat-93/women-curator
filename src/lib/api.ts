@@ -188,8 +188,15 @@ export const orderService = {
     }
   },
 
-  async createOrder(order: Partial<Order>): Promise<{ success: boolean; orderId?: string; error?: string }> {
+  async createOrder(order: Partial<Order>): Promise<{ success: boolean; orderId?: string; order?: Order; error?: string }> {
     try {
+      // Capture stored UTM & Click attribution
+      let attribution: any = {};
+      try {
+        const lastTouch = sessionStorage.getItem('women_curator_utm_last_touch') || localStorage.getItem('women_curator_utm_last_touch');
+        if (lastTouch) attribution = JSON.parse(lastTouch);
+      } catch (e) {}
+
       const orderPayload = {
         order_number: order.order_number || `WC-${Date.now().toString().slice(-6)}`,
         customer_name: order.customer_name,
@@ -205,7 +212,15 @@ export const orderService = {
         delivery_charge: order.delivery_charge || 0,
         discount: order.discount || 0,
         total: order.total || 0,
-        status: order.status || 'pending'
+        status: order.status || 'pending',
+        utm_source: order.utm_source || attribution.utm_source || null,
+        utm_medium: order.utm_medium || attribution.utm_medium || null,
+        utm_campaign: order.utm_campaign || attribution.utm_campaign || null,
+        utm_term: order.utm_term || attribution.utm_term || null,
+        utm_content: order.utm_content || attribution.utm_content || null,
+        gclid: order.gclid || attribution.gclid || null,
+        fbclid: order.fbclid || attribution.fbclid || null,
+        ttclid: order.ttclid || attribution.ttclid || null
       };
 
       const { data: insertedOrder, error: orderError } = await supabase
@@ -216,6 +231,7 @@ export const orderService = {
 
       if (orderError) throw orderError;
 
+      let createdItems = order.items || [];
       if (order.items && order.items.length > 0 && insertedOrder?.id) {
         const itemRows = order.items.map(it => ({
           order_id: insertedOrder.id,
@@ -229,26 +245,49 @@ export const orderService = {
           subtotal: it.subtotal
         }));
 
-        await supabase.from('order_items').insert(itemRows);
+        const { data: insertedItems } = await supabase
+          .from('order_items')
+          .insert(itemRows)
+          .select();
+
+        if (insertedItems && insertedItems.length > 0) {
+          createdItems = insertedItems;
+        }
       }
+
+      const fullOrder: Order = {
+        ...insertedOrder,
+        items: createdItems
+      };
 
       // Sync local backup
       const current = JSON.parse(localStorage.getItem('women_curator_orders') || '[]');
-      localStorage.setItem('women_curator_orders', JSON.stringify([insertedOrder, ...current]));
+      localStorage.setItem('women_curator_orders', JSON.stringify([fullOrder, ...current]));
 
-      return { success: true, orderId: insertedOrder.order_number };
+      return { success: true, orderId: fullOrder.order_number, order: fullOrder };
     } catch (err: any) {
       console.error('Supabase createOrder failed, storing locally:', err);
       const fallbackNumber = order.order_number || `WC-${Date.now().toString().slice(-6)}`;
-      const fallbackOrder = {
+      const fallbackOrder: Order = {
         ...order,
         id: `local-${Date.now()}`,
         order_number: fallbackNumber,
+        customer_name: order.customer_name || 'Guest',
+        phone: order.phone || '',
+        address: order.address || '',
+        city: order.city || 'Dhaka',
+        payment_method: order.payment_method || 'Cash on Delivery',
+        subtotal: order.subtotal || 0,
+        delivery_charge: order.delivery_charge || 0,
+        discount: order.discount || 0,
+        total: order.total || 0,
+        status: (order.status as any) || 'pending',
+        items: order.items || [],
         created_at: new Date().toISOString()
       };
       const current = JSON.parse(localStorage.getItem('women_curator_orders') || '[]');
       localStorage.setItem('women_curator_orders', JSON.stringify([fallbackOrder, ...current]));
-      return { success: true, orderId: fallbackNumber };
+      return { success: true, orderId: fallbackNumber, order: fallbackOrder };
     }
   }
 };
@@ -794,3 +833,117 @@ export const mediaService = {
     }
   }
 };
+
+// -------------------------------------------------------------
+// 11. TRACKING & ANALYTICS SERVICE
+// -------------------------------------------------------------
+export const trackingService = {
+  async getTrackingSettings() {
+    try {
+      const { data, error } = await supabase
+        .from('tracking_settings')
+        .select('*')
+        .eq('id', 'default')
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data) return data;
+    } catch (err) {
+      console.warn('getTrackingSettings error:', err);
+    }
+    return {
+      id: 'default',
+      gtm_enabled: false,
+      gtm_container_id: '',
+      ga4_enabled: false,
+      ga4_measurement_id: '',
+      google_ads_enabled: false,
+      google_ads_conversion_id: '',
+      google_ads_purchase_label: '',
+      google_ads_cart_label: '',
+      google_ads_begin_checkout_label: '',
+      meta_enabled: false,
+      meta_pixel_id: '',
+      meta_capi_enabled: false,
+      tiktok_enabled: false,
+      tiktok_pixel_id: '',
+      tiktok_events_api_enabled: false,
+      advanced_matching_enabled: false,
+      debug_mode: true,
+      consent_mode_enabled: false
+    };
+  },
+
+  async saveTrackingSettings(settings: any): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('tracking_settings')
+        .upsert({ ...settings, id: 'default', updated_at: new Date().toISOString() });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async getTrackingEventsConfig() {
+    try {
+      const { data, error } = await supabase
+        .from('tracking_events_config')
+        .select('*')
+        .order('id', { ascending: true });
+
+      if (error) throw error;
+      if (data && data.length > 0) return data;
+    } catch (err) {
+      console.warn('getTrackingEventsConfig error:', err);
+    }
+    return [
+      { id: 'page_view', name: 'Page View', category: 'navigation', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'view_item_list', name: 'View Item List (Collections)', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'select_item', name: 'Select Item (Product Click)', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'view_item', name: 'View Item (Product Detail)', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'add_to_cart', name: 'Add to Cart', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: true, meta_enabled: true, tiktok_enabled: true },
+      { id: 'remove_from_cart', name: 'Remove from Cart', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: false },
+      { id: 'view_cart', name: 'View Cart', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'begin_checkout', name: 'Begin Checkout (Initiate Checkout)', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: true, meta_enabled: true, tiktok_enabled: true },
+      { id: 'add_shipping_info', name: 'Add Shipping Info', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: false },
+      { id: 'add_payment_info', name: 'Add Payment Info', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'purchase', name: 'Purchase (Order Confirmation)', category: 'ecommerce', enabled: true, ga4_enabled: true, google_ads_enabled: true, meta_enabled: true, tiktok_enabled: true },
+      { id: 'search', name: 'Search Catalog', category: 'engagement', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'add_to_wishlist', name: 'Add to Wishlist', category: 'engagement', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true },
+      { id: 'newsletter_signup', name: 'Newsletter Subscription (Lead)', category: 'lead', enabled: true, ga4_enabled: true, google_ads_enabled: false, meta_enabled: true, tiktok_enabled: true }
+    ];
+  },
+
+  async saveTrackingEventsConfig(events: any[]): Promise<{ success: boolean; error?: string }> {
+    try {
+      const { error } = await supabase
+        .from('tracking_events_config')
+        .upsert(events);
+
+      if (error) throw error;
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err.message };
+    }
+  },
+
+  async getRecentConversionEvents(limit: number = 20) {
+    try {
+      const { data, error } = await supabase
+        .from('conversion_events')
+        .select('*')
+        .order('sent_at', { ascending: false })
+        .limit(limit);
+
+      if (error) throw error;
+      return data || [];
+    } catch (err) {
+      console.warn('getRecentConversionEvents error:', err);
+      return [];
+    }
+  }
+};
+

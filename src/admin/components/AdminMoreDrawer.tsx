@@ -17,7 +17,8 @@ import {
   Users,
   ExternalLink,
   LogOut,
-  ChevronRight
+  ChevronRight,
+  Activity
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
@@ -54,8 +55,9 @@ export const AdminMoreDrawer: React.FC<AdminMoreDrawerProps> = ({ isOpen, onClos
       ]
     },
     {
-      title: 'MARKETING & AUDIENCE',
+      title: 'MARKETING & ANALYTICS',
       items: [
+        { label: 'Analytics & Tracking', path: '/admin/settings/tracking', icon: Activity, desc: 'GTM, GA4, Meta, TikTok Pixels' },
         { label: 'Announcement Bar', path: '/admin/marketing/announcement', icon: Megaphone, desc: 'Top promotion banner' },
         { label: 'Newsletter Leads', path: '/admin/marketing/newsletter', icon: Mail, desc: 'Subscriber emails & export' }
       ]

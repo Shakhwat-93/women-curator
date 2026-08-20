@@ -6,6 +6,7 @@ import { orderService } from '../../lib/api';
 import { Order, CheckoutFormData } from '../../types';
 import { OrderSummary } from './OrderSummary';
 import { OrderSuccessModal } from './OrderSuccessModal';
+import { track } from '../../tracking';
 
 export const CheckoutModal: React.FC = () => {
   const {
@@ -116,11 +117,16 @@ export const CheckoutModal: React.FC = () => {
       const result = await orderService.createOrder(orderPayload);
 
       if (result.success) {
-        setCompletedOrder({
+        const fullCreatedOrder: Order = result.order || {
           ...orderPayload,
           order_number: result.orderId || orderNumber,
           created_at: new Date().toISOString()
-        });
+        };
+
+        // FIRE CANONICAL ZERO-DUPLICATE PURCHASE TRACKING
+        track.purchase(fullCreatedOrder);
+
+        setCompletedOrder(fullCreatedOrder);
         clearCart();
         setIsCheckoutOpen(false);
         setIsSuccessModalOpen(true);
@@ -133,7 +139,16 @@ export const CheckoutModal: React.FC = () => {
   };
 
   const handleChange = (field: keyof CheckoutFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'city') {
+        track.addShippingInfo(cart, finalTotal, value);
+      }
+      if (field === 'paymentMethod') {
+        track.addPaymentInfo(cart, finalTotal, value);
+      }
+      return next;
+    });
     if (errors[field]) {
       setErrors((prev: Partial<Record<keyof CheckoutFormData, string>>) => ({ ...prev, [field]: undefined }));
     }

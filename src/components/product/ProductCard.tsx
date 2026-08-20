@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Product, ColorOption } from '../../types';
 import { OrganicBackground } from '../common/OrganicBackground';
 import { useWishlist } from '../../context/WishlistContext';
+import { track } from '../../tracking';
 
 interface ProductCardProps {
   product: Product;
@@ -30,8 +31,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const variantIndex = (index % 4) + 1;
   const bgVariant = `card-${variantIndex}` as 'card-1' | 'card-2' | 'card-3' | 'card-4';
 
+  const handleCardClick = () => {
+    track.selectItem(product);
+    if (onQuickView) {
+      track.viewItem(product, selectedColor.name);
+      onQuickView(product);
+    }
+  };
+
   const handleOrderNow = (e: React.MouseEvent) => {
     e.stopPropagation();
+    track.selectItem(product);
     if (onDirectOrder) {
       onDirectOrder(product);
     }
@@ -39,11 +49,20 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   const handleQuickAdd = (e: React.MouseEvent) => {
     e.stopPropagation();
+    track.selectItem(product);
     if (onDirectOrder) {
       onDirectOrder(product);
     }
     setAddedAnimation(true);
     setTimeout(() => setAddedAnimation(false), 1500);
+  };
+
+  const handleWishlistClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isSaved) {
+      track.addToWishlist(product);
+    }
+    toggleWishlist(product);
   };
 
   return (
@@ -52,7 +71,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-50px' }}
       transition={{ duration: 0.5, delay: index * 0.1 }}
-      onClick={() => onQuickView && onQuickView(product)}
+      onClick={handleCardClick}
       className="group relative bg-[#FDFBF7] rounded-[2rem] p-3.5 sm:p-4 border border-[#EFE5DC] hover:border-curator-blush/60 shadow-curator hover:shadow-curator-lg transition-all duration-400 flex flex-col justify-between cursor-pointer"
     >
       {/* 1. PRODUCT IMAGE STAGE (Matches Reference Card 1:1) */}
@@ -78,10 +97,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Wishlist Heart Button */}
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleWishlist(product);
-            }}
+            onClick={handleWishlistClick}
             aria-label={isSaved ? 'Remove from wishlist' : 'Add to wishlist'}
             className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-300 backdrop-blur-md shadow-sm ${
               isSaved

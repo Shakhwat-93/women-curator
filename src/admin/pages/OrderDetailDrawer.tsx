@@ -309,6 +309,51 @@ ${order.items?.map(it => `- ${it.product_name} (${it.color_name}, ${it.size}) ×
               </p>
             </div>
 
+            {/* Campaign & UTM Marketing Attribution */}
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-curator-border shadow-xs space-y-2.5">
+              <span className="text-[10px] font-bold tracking-widest text-curator-muted font-mono uppercase block">
+                Marketing Attribution & Ad Source
+              </span>
+
+              {order.utm_source || order.gclid || order.fbclid || order.ttclid ? (
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2.5 rounded-xl bg-[#FAF5EE]/60 border border-curator-border/60">
+                    <span className="text-[10px] text-curator-muted uppercase block">Source / Medium</span>
+                    <span className="font-mono font-bold text-curator-charcoal">
+                      {order.utm_source || 'Direct'} / {order.utm_medium || 'Organic'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl bg-[#FAF5EE]/60 border border-curator-border/60">
+                    <span className="text-[10px] text-curator-muted uppercase block">Campaign</span>
+                    <span className="font-mono font-bold text-curator-charcoal">
+                      {order.utm_campaign || '—'}
+                    </span>
+                  </div>
+
+                  {order.utm_content && (
+                    <div className="p-2.5 rounded-xl bg-[#FAF5EE]/60 border border-curator-border/60 col-span-2">
+                      <span className="text-[10px] text-curator-muted uppercase block">Content / Creative</span>
+                      <span className="font-mono text-curator-charcoal">{order.utm_content}</span>
+                    </div>
+                  )}
+
+                  {(order.gclid || order.fbclid || order.ttclid) && (
+                    <div className="p-2.5 rounded-xl bg-[#FAF5EE]/60 border border-curator-border/60 col-span-2">
+                      <span className="text-[10px] text-curator-muted uppercase block">Click ID</span>
+                      <span className="font-mono text-[10px] text-curator-coral break-all">
+                        {order.gclid ? `gclid: ${order.gclid}` : order.fbclid ? `fbclid: ${order.fbclid}` : `ttclid: ${order.ttclid}`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-curator-muted font-mono">
+                  Direct Storefront Visitor (Organic / No UTM tag attached)
+                </p>
+              )}
+            </div>
+
           </div>
 
           {/* Sticky Bottom Actions */}

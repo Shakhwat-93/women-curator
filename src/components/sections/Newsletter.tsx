@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Mail, Sparkles, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { OrganicBackground } from '../common/OrganicBackground';
+import { track } from '../../tracking';
 
 export const Newsletter: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -10,6 +11,7 @@ export const Newsletter: React.FC = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !email.includes('@')) return;
+    track.newsletterSignup(email.trim());
     setIsSubmitted(true);
   };
 

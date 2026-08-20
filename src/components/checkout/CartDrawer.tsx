@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ShoppingBag, ArrowRight, Trash2, Plus, Minus, Tag, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../../context/CartContext';
+import { track } from '../../tracking';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -23,9 +24,15 @@ export const CartDrawer: React.FC = () => {
   const [inputCode, setInputCode] = useState('');
   const [promoMessage, setPromoMessage] = useState<{ valid: boolean; text: string } | null>(null);
 
-  if (!isCartOpen) return null;
-
   const finalTotal = subtotal + deliveryCharge - discount;
+
+  useEffect(() => {
+    if (isCartOpen && cart.length > 0) {
+      track.viewCart(cart, finalTotal);
+    }
+  }, [isCartOpen]);
+
+  if (!isCartOpen) return null;
 
   const handleApplyCode = (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,6 +42,7 @@ export const CartDrawer: React.FC = () => {
   };
 
   const handleProceedToCheckout = () => {
+    track.beginCheckout(cart, finalTotal);
     setIsCartOpen(false);
     setIsCheckoutOpen(true);
   };

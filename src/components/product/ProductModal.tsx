@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Product, ColorOption } from '../../types';
 import { OrganicBackground } from '../common/OrganicBackground';
 import { useWishlist } from '../../context/WishlistContext';
+import { track } from '../../tracking';
 
 interface ProductModalProps {
   product: Product | null;
@@ -23,18 +24,22 @@ export const ProductModal: React.FC<ProductModalProps> = ({
   const [activeImage, setActiveImage] = useState<string>('');
 
   useEffect(() => {
-    if (product) {
-      setSelectedColor(product.colors[0]);
-      setSelectedSize(product.sizes?.[0] || 'M (38)');
+    if (product && isOpen) {
+      const initialColor = product.colors[0];
+      const initialSize = product.sizes?.[0] || 'M (38)';
+      setSelectedColor(initialColor);
+      setSelectedSize(initialSize);
       setActiveImage(product.image_url);
+      track.viewItem(product, initialColor?.name, initialSize);
     }
-  }, [product]);
+  }, [product, isOpen]);
 
   if (!isOpen || !product || !selectedColor) return null;
 
   const isSaved = isInWishlist(product.id);
 
   const handleInstantOrder = () => {
+    track.selectItem(product);
     onClose();
     const el = document.getElementById('order-form');
     if (el) {

@@ -18,7 +18,8 @@ import {
   Users,
   ExternalLink,
   LogOut,
-  X
+  X,
+  Activity
 } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 
@@ -74,8 +75,9 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen, onClose }) =
       ]
     },
     {
-      title: 'MARKETING',
+      title: 'MARKETING & ANALYTICS',
       items: [
+        { label: 'Analytics & Tracking', path: '/admin/settings/tracking', icon: Activity },
         { label: 'Announcement Bar', path: '/admin/marketing/announcement', icon: Megaphone },
         { label: 'Newsletter', path: '/admin/marketing/newsletter', icon: Mail }
       ]

@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { ShieldCheck, CheckCircle2, Lock, ArrowRight, AlertCircle, ShoppingBag, Sparkles, User, Phone, MapPin, Tag } from 'lucide-react';
 import { motion } from 'framer-motion';
 import confetti from 'canvas-confetti';
-import { Product, ColorOption, DeliverySettings } from '../../types';
+import { Product, ColorOption, DeliverySettings, Order } from '../../types';
 import { orderService } from '../../lib/api';
 import { OrganicBackground } from '../common/OrganicBackground';
+import { track } from '../../tracking';
 
 interface DirectOrderSectionProps {
   products: Product[];
@@ -98,7 +99,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
     try {
       const orderNumber = `WC-${Date.now().toString().slice(-6)}`;
 
-      const orderPayload = {
+      const orderPayload: Partial<Order> = {
         order_number: orderNumber,
         customer_name: fullName.trim(),
         phone: phone.trim(),
@@ -113,7 +114,7 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
         delivery_charge: deliveryCharge,
         discount: appliedDiscount,
         total: total,
-        status: 'pending' as const,
+        status: 'pending',
         items: [
           {
             product_id: selectedProduct.id,
@@ -131,6 +132,15 @@ export const DirectOrderSection: React.FC<DirectOrderSectionProps> = ({
       const res = await orderService.createOrder(orderPayload);
 
       if (res.success) {
+        const fullCreatedOrder: Order = res.order || {
+          ...(orderPayload as any),
+          order_number: res.orderId || orderNumber,
+          created_at: new Date().toISOString()
+        };
+
+        // FIRE CANONICAL ZERO-DUPLICATE PURCHASE TRACKING
+        track.purchase(fullCreatedOrder);
+
         setOrderCompleted({
           orderNumber: res.orderId || orderNumber,
           total: total

@@ -4,6 +4,8 @@ import { ProductCard } from '../product/ProductCard';
 import { ProductCardSkeleton } from '../common/LoadingSkeleton';
 import { Sparkles, ArrowRight } from 'lucide-react';
 
+import { track } from '../../tracking';
+
 interface ProductGridProps {
   products: Product[];
   isLoading?: boolean;
@@ -19,6 +21,12 @@ export const ProductGrid: React.FC<ProductGridProps> = ({
 }) => {
   // Only show active products
   const activeProducts = products.filter(p => p.status !== 'archived' && p.is_active !== false);
+
+  React.useEffect(() => {
+    if (!isLoading && activeProducts.length > 0) {
+      track.viewItemList(activeProducts, 'New Collection Drops', 'curated_drops');
+    }
+  }, [isLoading, activeProducts.length]);
 
   return (
     <section id="products" className="py-16 sm:py-24 bg-[#FAF5EE] relative overflow-hidden">

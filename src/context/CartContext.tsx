@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Product, CartItem, ColorOption } from '../types';
+import { track } from '../tracking';
 
 interface CartContextType {
   cart: CartItem[];
@@ -68,6 +69,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const selectedColor = color || product.colors[0];
     const selectedSize = size || product.sizes?.[0] || 'M (38)';
 
+    track.addToCart(product, quantity, selectedColor.name, selectedSize);
+
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(
         item =>
@@ -96,6 +99,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const selectedColor = color || product.colors[0];
     const selectedSize = size || product.sizes?.[0] || 'M (38)';
 
+    track.addToCart(product, 1, selectedColor.name, selectedSize);
+
     setCart(prevCart => {
       const existingIndex = prevCart.findIndex(
         item =>
@@ -115,6 +120,16 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const removeFromCart = (productId: string, colorHex: string, size: string) => {
+    const target = cart.find(
+      it =>
+        it.product.id === productId &&
+        it.selectedColor.hex === colorHex &&
+        it.selectedSize === size
+    );
+    if (target) {
+      track.removeFromCart(target.product, target.quantity, target.selectedColor.name, target.selectedSize);
+    }
+
     setCart(prevCart =>
       prevCart.filter(
         item =>

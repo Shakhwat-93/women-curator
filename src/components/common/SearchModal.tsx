@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product } from '../../types';
+import { track } from '../../tracking';
 
 interface SearchModalProps {
   products: Product[];
@@ -17,6 +18,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({
   onSelectProduct
 }) => {
   const [query, setQuery] = useState('');
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (query.trim()) {
+      track.search(query.trim());
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -47,7 +55,7 @@ export const SearchModal: React.FC<SearchModalProps> = ({
           exit={{ opacity: 0, scale: 0.95, y: -20 }}
           className="relative w-full max-w-2xl bg-curator-surface rounded-[2.5rem] border border-curator-border shadow-2xl overflow-hidden z-10 p-6"
         >
-          <div className="flex items-center justify-between pb-4 border-b border-curator-border">
+          <form onSubmit={handleSearchSubmit} className="flex items-center justify-between pb-4 border-b border-curator-border">
             <div className="flex items-center gap-3 flex-1">
               <Search className="w-5 h-5 text-curator-coral" />
               <input
@@ -60,12 +68,13 @@ export const SearchModal: React.FC<SearchModalProps> = ({
               />
             </div>
             <button
+              type="button"
               onClick={onClose}
               className="p-2 rounded-full hover:bg-white text-curator-charcoal"
             >
               <X className="w-5 h-5" />
             </button>
-          </div>
+          </form>
 
           <div className="mt-4 max-h-96 overflow-y-auto space-y-2.5">
             <span className="text-[11px] uppercase tracking-wider text-curator-muted font-bold block mb-2">

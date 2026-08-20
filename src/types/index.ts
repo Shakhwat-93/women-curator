@@ -106,6 +106,14 @@ export interface Order {
   total: number;
   status: OrderStatus;
   items?: OrderItem[];
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  utm_term?: string;
+  utm_content?: string;
+  gclid?: string;
+  fbclid?: string;
+  ttclid?: string;
   created_at?: string;
   updated_at?: string;
 }
