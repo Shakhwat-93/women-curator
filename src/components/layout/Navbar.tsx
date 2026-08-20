@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingBag, Phone, Lock } from 'lucide-react';
+import { ShoppingBag, Phone } from 'lucide-react';
 import { NavigationItem, SiteSettings } from '../../types';
 
 interface NavbarProps {
@@ -81,15 +81,6 @@ export const Navbar: React.FC<NavbarProps> = ({ onOrderNow, navigationItems, sit
               <ShoppingBag className="w-3.5 h-3.5" />
               <span>Order Now</span>
             </button>
-
-            {/* Admin Quick Link */}
-            <a
-              href="/admin"
-              title="Admin Portal"
-              className="p-2.5 rounded-full border border-curator-border bg-white text-curator-muted hover:text-curator-coral hover:border-curator-coral transition-colors"
-            >
-              <Lock className="w-3.5 h-3.5" />
-            </a>
           </div>
         </div>
       </div>

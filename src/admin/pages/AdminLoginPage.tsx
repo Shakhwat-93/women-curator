@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Mail, ArrowRight, Sparkles, ShieldCheck } from 'lucide-react';
+import { Lock, Mail, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useAdminAuth } from '../context/AdminAuthContext';
 import { OrganicBackground } from '../../components/common/OrganicBackground';
 
 export const AdminLoginPage: React.FC = () => {
-  const [email, setEmail] = useState('putimach324@gmail.com');
-  const [password, setPassword] = useState('curator2026');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -95,16 +95,6 @@ export const AdminLoginPage: React.FC = () => {
                   className="w-full pl-10 pr-4 py-3 rounded-2xl border border-curator-border bg-[#FAF5EE]/50 text-xs font-mono focus:outline-none focus:border-curator-coral focus:bg-white transition-all"
                 />
               </div>
-            </div>
-
-            {/* Quick Helper Credentials */}
-            <div className="p-3 rounded-2xl bg-curator-surface-peach/60 border border-curator-border/60 text-[11px] text-curator-muted space-y-1">
-              <div className="flex items-center gap-1 text-curator-coral font-bold">
-                <Sparkles className="w-3 h-3" />
-                <span>Admin Quick Access</span>
-              </div>
-              <p>Email: <code className="font-mono text-curator-charcoal font-bold">putimach324@gmail.com</code></p>
-              <p>Password: <code className="font-mono text-curator-charcoal font-bold">curator2026</code></p>
             </div>
 
             <button
