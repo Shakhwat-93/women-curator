@@ -63,31 +63,35 @@ export const AdminAuthProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const login = async (email: string, pass: string): Promise<{ success: boolean; error?: string }> => {
     setIsLoading(true);
     try {
-      // 1. Try Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password: pass });
-      if (data?.user) {
-        const u: AdminUser = {
-          id: data.user.id,
-          email: data.user.email || email,
-          full_name: data.user.user_metadata?.full_name || 'Owner',
+      const cleanEmail = email.trim().toLowerCase();
+      // 1. Primary Owner & Admin Instant Access
+      if (
+        (cleanEmail === 'putimach324@gmail.com' || cleanEmail === 'admin@womencurator.com' || cleanEmail === 'owner@womencurator.com') &&
+        (pass === 'curator2026' || pass === 'admin123' || pass === '123456')
+      ) {
+        const adminUser: AdminUser = {
+          id: 'admin-owner-001',
+          email: cleanEmail,
+          full_name: cleanEmail.includes('putimach') ? 'Shakhwat Hossain Rasel (Owner)' : 'Women Curator Manager',
           role: 'owner'
         };
-        setUser(u);
-        localStorage.setItem('women_curator_admin_session', JSON.stringify(u));
+        setUser(adminUser);
+        localStorage.setItem('women_curator_admin_session', JSON.stringify(adminUser));
         setIsLoading(false);
         return { success: true };
       }
 
-      // 2. Demo credentials fallback (owner@womencurator.com / admin123) for instant access
-      if ((email === 'admin@womencurator.com' || email === 'owner@womencurator.com' || email === 'putimach324@gmail.com') && (pass === 'admin123' || pass === 'curator2026' || pass === '123456')) {
-        const demoUser: AdminUser = {
-          id: 'admin-owner-001',
-          email,
-          full_name: 'Shakhwat Hossain Rasel (Owner)',
-          role: 'owner'
+      // 2. Try Supabase Auth for database-registered users
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: pass });
+      if (data?.user) {
+        const u: AdminUser = {
+          id: data.user.id,
+          email: data.user.email || cleanEmail,
+          full_name: data.user.user_metadata?.full_name || 'Store Admin',
+          role: (data.user.user_metadata?.role as AdminRole) || 'admin'
         };
-        setUser(demoUser);
-        localStorage.setItem('women_curator_admin_session', JSON.stringify(demoUser));
+        setUser(u);
+        localStorage.setItem('women_curator_admin_session', JSON.stringify(u));
         setIsLoading(false);
         return { success: true };
       }

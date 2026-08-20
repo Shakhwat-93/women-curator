@@ -70,8 +70,35 @@ export const productService = {
 
   async saveProduct(product: Partial<Product>): Promise<{ success: boolean; data?: Product; error?: string }> {
     try {
-      const payload = {
-        ...product,
+      const payload: Record<string, any> = {
+        id: product.id || `prod-${Date.now()}`,
+        name: product.name,
+        slug: product.slug || product.name?.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || '',
+        sku: product.sku || null,
+        subtitle: product.subtitle || null,
+        description: product.description || null,
+        price: Number(product.price) || 0,
+        compare_price: Number(product.compare_price) || 0,
+        cost_price: product.cost_price ? Number(product.cost_price) : null,
+        stock: product.stock !== undefined ? Number(product.stock) : 50,
+        low_stock_threshold: product.low_stock_threshold ? Number(product.low_stock_threshold) : 5,
+        status: product.status || 'active',
+        badge: product.badge || null,
+        category_name: product.category_name || null,
+        category_id: product.category_id || null,
+        collection_id: product.collection_id || null,
+        image_url: product.image_url || '',
+        gallery: product.gallery || [],
+        colors: product.colors || [],
+        sizes: product.sizes || ['S (36)', 'M (38)', 'L (40)', 'XL (42)'],
+        fabric_details: product.fabric_details || null,
+        care_instructions: product.care_instructions || null,
+        card_settings: product.card_settings || {},
+        is_featured: product.is_featured ?? true,
+        is_active: product.status === 'active',
+        sort_order: product.sort_order || 0,
+        seo_title: product.seo_title || null,
+        seo_description: product.seo_description || null,
         updated_at: new Date().toISOString()
       };
 
