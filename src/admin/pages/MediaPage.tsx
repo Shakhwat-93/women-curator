@@ -53,7 +53,7 @@ export const MediaPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 lg:pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -64,15 +64,17 @@ export const MediaPage: React.FC = () => {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal">
             Media Library
           </h1>
+          <p className="text-xs text-curator-muted font-sans mt-0.5">
+            Cloud assets stored in public Supabase CDN buckets
+          </p>
         </div>
 
-        <label className="cursor-pointer inline-flex items-center gap-2 py-3 px-6 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider shadow-lg hover:bg-curator-coral-hover hover:shadow-curator-glow active:scale-95 transition-all self-start sm:self-auto">
+        <label className="cursor-pointer inline-flex items-center justify-center gap-2 py-3 px-6 rounded-full bg-curator-coral text-white text-xs font-bold shadow-md hover:bg-curator-coral-hover active:scale-95 transition-all self-stretch sm:self-auto min-h-[44px]">
           <Upload className="w-4 h-4" />
-          <span>{isUploading ? 'Uploading...' : 'Upload Asset'}</span>
+          <span>{isUploading ? 'Uploading...' : 'Upload Image'}</span>
           <input
             type="file"
             accept="image/*"
-            disabled={isUploading}
             onChange={handleFileUpload}
             className="hidden"
           />
@@ -80,22 +82,18 @@ export const MediaPage: React.FC = () => {
       </div>
 
       {/* Bucket Selector Tabs */}
-      <div className="flex items-center gap-2 bg-white rounded-full p-1.5 border border-curator-border max-w-md shadow-sm text-xs font-semibold">
-        {[
-          { key: 'product-images', label: 'Product Images' },
-          { key: 'hero-images', label: 'Hero Banners' },
-          { key: 'site-assets', label: 'Site Assets' }
-        ].map(b => (
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {(['product-images', 'hero-images', 'site-assets'] as const).map(b => (
           <button
-            key={b.key}
-            onClick={() => setBucket(b.key as any)}
-            className={`flex-1 py-2 rounded-full transition-all ${
-              bucket === b.key
-                ? 'bg-curator-coral text-white shadow-sm font-bold'
-                : 'text-curator-muted hover:text-curator-charcoal'
+            key={b}
+            onClick={() => setBucket(b)}
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold capitalize transition-all border whitespace-nowrap min-h-[44px] ${
+              bucket === b
+                ? 'bg-curator-charcoal text-white border-curator-charcoal shadow-sm'
+                : 'bg-white text-curator-charcoal border-curator-border hover:bg-curator-surface-peach'
             }`}
           >
-            {b.label}
+            {b.replace('-', ' ')}
           </button>
         ))}
       </div>
@@ -104,42 +102,40 @@ export const MediaPage: React.FC = () => {
       {isLoading ? (
         <AdminCardSkeleton />
       ) : mediaList.length === 0 ? (
-        <div className="bg-white rounded-[2rem] border border-curator-border p-12 text-center space-y-3">
-          <Image className="w-10 h-10 text-curator-muted mx-auto" />
-          <h4 className="font-serif text-base font-bold text-curator-charcoal">No Assets in Bucket</h4>
-          <p className="text-xs text-curator-muted">
-            Click <strong>Upload Asset</strong> above to upload photoshoot photos to Supabase Storage.
-          </p>
+        <div className="bg-white rounded-2xl sm:rounded-[2rem] border border-curator-border p-12 text-center space-y-3">
+          <div className="w-12 h-12 rounded-full bg-curator-coral-light text-curator-coral mx-auto flex items-center justify-center">
+            <Image className="w-6 h-6" />
+          </div>
+          <p className="text-xs text-curator-muted">No files in "{bucket}" bucket yet.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
-          {mediaList.map((item, idx) => (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6">
+          {mediaList.map((file, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-[2rem] p-3 border border-curator-border shadow-sm flex flex-col justify-between group overflow-hidden"
+              className="bg-white rounded-2xl sm:rounded-3xl border border-curator-border overflow-hidden shadow-xs group flex flex-col justify-between"
             >
-              <div className="aspect-[4/5] rounded-2xl overflow-hidden bg-curator-bg mb-3 relative">
+              <div className="relative aspect-square bg-[#FAF5EE] overflow-hidden">
                 <img
-                  src={item.url}
-                  alt={item.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  src={file.url}
+                  alt={file.name}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               </div>
 
-              <div className="space-y-1">
-                <p className="text-xs font-mono font-semibold text-curator-charcoal truncate" title={item.name}>
-                  {item.name}
+              <div className="p-3 sm:p-4 space-y-2 border-t border-curator-border/50">
+                <p className="text-[11px] font-mono text-curator-charcoal truncate" title={file.name}>
+                  {file.name}
                 </p>
-                <div className="flex items-center justify-between text-[10px] text-curator-muted font-mono">
-                  <span>{(item.size / 1024).toFixed(0)} KB</span>
-                  <button
-                    onClick={() => handleCopyUrl(item.url)}
-                    className="text-curator-coral font-bold hover:underline flex items-center gap-0.5"
-                  >
-                    <Copy className="w-3 h-3" />
-                    <span>Copy URL</span>
-                  </button>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleCopyUrl(file.url)}
+                  className="w-full py-2 px-3 rounded-xl border border-curator-border hover:bg-curator-coral hover:text-white text-curator-charcoal text-[11px] font-bold transition-colors flex items-center justify-center gap-1.5 min-h-[36px]"
+                >
+                  <Copy className="w-3.5 h-3.5" />
+                  <span>Copy CDN URL</span>
+                </button>
               </div>
             </div>
           ))}

@@ -48,18 +48,21 @@ export const StoreSettingsPage: React.FC = () => {
   if (isLoading) return <AdminCardSkeleton />;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl pb-20 lg:pb-12">
       <div>
         <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-curator-coral-light text-curator-coral text-xs font-semibold uppercase tracking-wider mb-1">
           <Sparkles className="w-3 h-3" />
           <span>Brand & Contact</span>
         </div>
         <h1 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal">
-          Store Settings & Social Channels
+          Store Settings & Channels
         </h1>
+        <p className="text-xs text-curator-muted font-sans mt-0.5">
+          Manage official contact numbers, showroom address, and brand story
+        </p>
       </div>
 
-      <form onSubmit={handleSave} className="bg-white rounded-[2rem] p-6 sm:p-8 border border-curator-border shadow-sm space-y-6">
+      <form onSubmit={handleSave} className="bg-white rounded-2xl sm:rounded-[2rem] p-5 sm:p-8 border border-curator-border shadow-xs space-y-6">
         {/* Brand Information */}
         <div className="space-y-4">
           <h3 className="font-serif text-base font-bold text-curator-charcoal border-b border-curator-border pb-2">
@@ -68,7 +71,7 @@ export const StoreSettingsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                 Store Name
               </label>
               <input
@@ -76,32 +79,32 @@ export const StoreSettingsPage: React.FC = () => {
                 required
                 value={data.store_name}
                 onChange={e => setData({ ...data, store_name: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs focus:outline-none focus:border-curator-coral font-bold"
+                className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs focus:outline-none focus:border-curator-coral font-bold min-h-[48px]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                 Brand Tagline
               </label>
               <input
                 type="text"
-                value={data.tagline}
+                value={data.tagline || ''}
                 onChange={e => setData({ ...data, tagline: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs focus:outline-none"
+                className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs focus:outline-none min-h-[48px]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+            <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
               Official Brand Story / Mission Statement
             </label>
             <textarea
               rows={3}
               value={data.brand_story || ''}
               onChange={e => setData({ ...data, brand_story: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs resize-none focus:outline-none font-sans leading-relaxed"
+              className="w-full p-4 rounded-2xl border border-curator-border text-xs focus:outline-none font-sans leading-relaxed"
             />
           </div>
         </div>
@@ -114,96 +117,67 @@ export const StoreSettingsPage: React.FC = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                 Customer Care Phone
               </label>
               <input
-                type="text"
-                value={data.phone}
+                type="tel"
+                inputMode="tel"
+                value={data.phone || ''}
                 onChange={e => setData({ ...data, phone: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs font-mono focus:outline-none"
+                className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs font-mono focus:outline-none min-h-[48px]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                 WhatsApp Helpline
               </label>
               <input
-                type="text"
-                value={data.whatsapp_number}
+                type="tel"
+                inputMode="tel"
+                value={data.whatsapp_number || ''}
                 onChange={e => setData({ ...data, whatsapp_number: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs font-mono focus:outline-none"
+                className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs font-mono focus:outline-none min-h-[48px]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                 Store Email
               </label>
               <input
                 type="email"
-                value={data.email}
+                inputMode="email"
+                value={data.email || ''}
                 onChange={e => setData({ ...data, email: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs font-mono focus:outline-none"
+                className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs font-mono focus:outline-none min-h-[48px]"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-              Studio / Showroom Address
+            <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
+              Showroom / Operating Address
             </label>
             <input
               type="text"
-              value={data.address}
+              value={data.address || ''}
               onChange={e => setData({ ...data, address: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs focus:outline-none"
+              className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs focus:outline-none min-h-[48px]"
             />
           </div>
         </div>
 
-        {/* Currency & Locale */}
-        <div className="space-y-4 pt-2">
-          <h3 className="font-serif text-base font-bold text-curator-charcoal border-b border-curator-border pb-2">
-            Currency
-          </h3>
-
-          <div className="grid grid-cols-2 gap-4 max-w-sm">
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                Currency Code
-              </label>
-              <input
-                type="text"
-                value={data.currency}
-                onChange={e => setData({ ...data, currency: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs font-mono font-bold uppercase"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                Symbol
-              </label>
-              <input
-                type="text"
-                value={data.currency_symbol}
-                onChange={e => setData({ ...data, currency_symbol: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-xl border border-curator-border text-xs font-serif font-bold text-curator-coral"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="pt-4 border-t border-curator-border flex justify-end">
+        {/* Save Button */}
+        <div className="flex justify-end pt-4 border-t border-curator-border">
           <button
             type="submit"
             disabled={isSaving}
-            className="flex items-center gap-2 px-8 py-3 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider shadow-lg hover:bg-curator-coral-hover transition-all disabled:opacity-50"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 py-3 px-8 rounded-full bg-curator-coral text-white font-sans text-xs font-bold shadow-md hover:bg-curator-coral-hover active:scale-95 disabled:opacity-50 min-h-[48px]"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save Store Settings'}</span>
+            <span>{isSaving ? 'Saving...' : 'Save Settings'}</span>
           </button>
         </div>
       </form>

@@ -27,7 +27,7 @@ export const AdminToastProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       removeToast(id);
-    }, 4000);
+    }, 3800);
   };
 
   const removeToast = (id: string) => {
@@ -45,32 +45,33 @@ export const AdminToastProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     >
       {children}
 
-      {/* Floating Toast Container */}
-      <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
+      {/* Floating Toast Container — positioned above mobile bottom nav bar (bottom-20) */}
+      <div className="fixed bottom-20 sm:bottom-5 right-4 left-4 sm:left-auto sm:right-5 z-50 flex flex-col gap-2 max-w-sm w-auto sm:w-full pointer-events-none pb-[env(safe-area-inset-bottom)]">
         <AnimatePresence>
           {toasts.map(t => (
             <motion.div
               key={t.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              initial={{ opacity: 0, y: 15, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className={`pointer-events-auto p-4 rounded-2xl shadow-xl border flex items-center gap-3 backdrop-blur-md ${
+              exit={{ opacity: 0, y: -10, scale: 0.96 }}
+              className={`pointer-events-auto p-3.5 sm:p-4 rounded-2xl shadow-xl border flex items-center gap-3 backdrop-blur-md ${
                 t.type === 'success'
-                  ? 'bg-white border-emerald-200 text-emerald-950'
+                  ? 'bg-white/95 border-emerald-200 text-emerald-950'
                   : t.type === 'error'
-                  ? 'bg-white border-rose-200 text-rose-950'
-                  : 'bg-white border-curator-border text-curator-charcoal'
+                  ? 'bg-white/95 border-rose-200 text-rose-950'
+                  : 'bg-white/95 border-curator-border text-curator-charcoal'
               }`}
             >
               {t.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />}
               {t.type === 'error' && <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />}
               {t.type === 'info' && <Info className="w-5 h-5 text-curator-coral flex-shrink-0" />}
 
-              <p className="text-xs font-semibold leading-relaxed flex-1">{t.message}</p>
+              <p className="text-xs font-semibold leading-snug flex-1 font-sans">{t.message}</p>
 
               <button
                 onClick={() => removeToast(t.id)}
-                className="p-1 rounded-full text-curator-muted hover:text-curator-charcoal hover:bg-black/5"
+                aria-label="Dismiss toast"
+                className="p-1 rounded-full text-curator-muted hover:text-curator-charcoal"
               >
                 <X className="w-4 h-4" />
               </button>

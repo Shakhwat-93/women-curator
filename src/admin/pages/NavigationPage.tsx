@@ -31,7 +31,7 @@ export const NavigationPage: React.FC = () => {
     const newItem: NavigationItem = {
       id: `nav-${Date.now()}`,
       label: 'New Link',
-      url: '#',
+      url: '#products',
       sort_order: items.length + 1,
       is_active: true
     };
@@ -65,7 +65,7 @@ export const NavigationPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-20 lg:pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -76,26 +76,29 @@ export const NavigationPage: React.FC = () => {
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal">
             Navbar Menu Links
           </h1>
+          <p className="text-xs text-curator-muted font-sans mt-0.5">
+            Configure header menu destinations and links
+          </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={handleAddItem}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-curator-border bg-white text-xs font-bold text-curator-charcoal hover:text-curator-coral hover:border-curator-coral shadow-xs"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-2xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal hover:text-curator-coral shadow-xs min-h-[44px]"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Menu Item</span>
+            <span>Add Link</span>
           </button>
 
           <button
             type="button"
             onClick={handleSave}
             disabled={isSaving}
-            className="flex items-center gap-2 px-7 py-2.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider shadow-lg hover:bg-curator-coral-hover hover:shadow-curator-glow active:scale-95 transition-all disabled:opacity-50"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-curator-coral text-white text-xs font-bold shadow-md hover:bg-curator-coral-hover active:scale-95 disabled:opacity-50 min-h-[44px]"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save Navigation'}</span>
+            <span>{isSaving ? 'Saving...' : 'Save Menu'}</span>
           </button>
         </div>
       </div>
@@ -104,10 +107,10 @@ export const NavigationPage: React.FC = () => {
       {isLoading ? (
         <AdminTableSkeleton rows={4} />
       ) : (
-        <div className="bg-white rounded-[2rem] p-6 border border-curator-border shadow-sm space-y-3 max-w-3xl">
+        <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-curator-border shadow-xs space-y-3 max-w-3xl">
           {items.map((item, idx) => (
-            <div key={item.id} className="flex items-center gap-3 p-3 rounded-2xl bg-[#FAF5EE]/50 border border-curator-border">
-              <span className="w-7 h-7 rounded-full bg-white border border-curator-border font-mono text-xs font-bold text-curator-coral flex items-center justify-center flex-shrink-0">
+            <div key={item.id} className="flex items-center gap-2 sm:gap-3 p-3 rounded-2xl bg-[#FAF5EE]/60 border border-curator-border">
+              <span className="w-7 h-7 rounded-xl bg-white border border-curator-border font-mono text-xs font-bold text-curator-coral flex items-center justify-center flex-shrink-0">
                 {idx + 1}
               </span>
 
@@ -117,21 +120,22 @@ export const NavigationPage: React.FC = () => {
                   value={item.label}
                   onChange={e => handleUpdate(idx, 'label', e.target.value)}
                   placeholder="Link Label"
-                  className="px-3 py-1.5 rounded-xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal focus:outline-none"
+                  className="px-3 py-2 rounded-xl border border-curator-border bg-white text-xs font-bold text-curator-charcoal focus:outline-none min-h-[40px]"
                 />
                 <input
                   type="text"
                   value={item.url}
                   onChange={e => handleUpdate(idx, 'url', e.target.value)}
                   placeholder="#section-id or URL"
-                  className="px-3 py-1.5 rounded-xl border border-curator-border bg-white text-xs font-mono text-curator-muted focus:outline-none"
+                  className="px-3 py-2 rounded-xl border border-curator-border bg-white text-xs font-mono text-curator-muted focus:outline-none min-h-[40px]"
                 />
               </div>
 
               <button
                 type="button"
                 onClick={() => handleDelete(idx)}
-                className="p-2 rounded-xl text-curator-muted hover:text-rose-600 hover:bg-rose-50"
+                aria-label="Remove menu item"
+                className="p-2 rounded-xl text-curator-muted hover:text-rose-600 hover:bg-rose-50 min-h-[40px] min-w-[40px] flex items-center justify-center"
               >
                 <Trash2 className="w-4 h-4" />
               </button>

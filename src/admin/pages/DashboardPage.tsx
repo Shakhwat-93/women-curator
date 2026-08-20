@@ -9,17 +9,22 @@ import {
   ArrowRight,
   Sparkles,
   Plus,
-  RefreshCw
+  RefreshCw,
+  ShoppingBag,
+  Sliders,
+  ChevronRight
 } from 'lucide-react';
 import { orderService, productService } from '../../lib/api';
 import { Order, Product } from '../../types';
 import { AdminCardSkeleton } from '../components/AdminSkeleton';
+import { useAdminAuth } from '../context/AdminAuthContext';
 
 export const DashboardPage: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'today' | '7days' | '30days' | 'all'>('all');
+  const { user } = useAdminAuth();
 
   const loadData = async () => {
     setIsLoading(true);
@@ -63,43 +68,43 @@ export const DashboardPage: React.FC = () => {
     {
       title: 'Total Revenue',
       value: `৳${totalSales.toLocaleString()}`,
-      subtitle: `${filteredOrders.length} total orders`,
+      subtitle: `${filteredOrders.length} orders`,
       icon: TrendingUp,
       accent: 'text-curator-coral bg-curator-coral-light'
     },
     {
-      title: 'Pending Orders',
+      title: 'Pending',
       value: pendingOrders.toString(),
-      subtitle: 'Awaiting phone confirmation',
+      subtitle: 'Needs review',
       icon: Clock,
       accent: 'text-amber-600 bg-amber-50'
     },
     {
-      title: 'Confirmed / Processing',
+      title: 'Confirmed',
       value: confirmedOrders.toString(),
-      subtitle: 'Ready for packaging',
+      subtitle: 'Packaging',
       icon: CheckCircle2,
       accent: 'text-blue-600 bg-blue-50'
     },
     {
       title: 'Delivered',
       value: deliveredOrders.toString(),
-      subtitle: 'Completed successfully',
+      subtitle: 'Completed',
       icon: Truck,
       accent: 'text-emerald-600 bg-emerald-50'
     },
     {
-      title: 'Active Products',
+      title: 'Active Drops',
       value: activeProducts.toString(),
-      subtitle: 'Published in storefront',
+      subtitle: 'Published',
       icon: Package,
       accent: 'text-purple-600 bg-purple-50'
     }
   ];
 
   return (
-    <div className="space-y-8">
-      {/* Header & Date Range Filter */}
+    <div className="space-y-6 sm:space-y-8">
+      {/* Mobile Greeting & Date Range Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-curator-coral-light text-curator-coral text-xs font-semibold uppercase tracking-wider mb-1">
@@ -107,20 +112,23 @@ export const DashboardPage: React.FC = () => {
             <span>Store Performance</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal">
-            Store Overview
+            Welcome, {user?.full_name?.split(' ')[0] || 'Owner'}
           </h1>
+          <p className="text-xs text-curator-muted font-sans mt-0.5">
+            Here is what's happening in your Women Curator store today.
+          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Date Filter Pills */}
-          <div className="flex items-center bg-white rounded-full p-1 border border-curator-border shadow-sm text-xs font-semibold">
+        {/* Date Filter Pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center bg-white rounded-full p-1 border border-curator-border shadow-xs text-xs font-semibold flex-shrink-0">
             {(['today', '7days', '30days', 'all'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setDateRange(tab)}
-                className={`px-3 py-1.5 rounded-full capitalize transition-all ${
+                className={`px-3 py-1.5 rounded-full capitalize transition-all whitespace-nowrap min-h-[32px] ${
                   dateRange === tab
-                    ? 'bg-curator-coral text-white shadow-sm'
+                    ? 'bg-curator-coral text-white shadow-xs font-bold'
                     : 'text-curator-muted hover:text-curator-charcoal'
                 }`}
               >
@@ -132,41 +140,44 @@ export const DashboardPage: React.FC = () => {
           <button
             onClick={loadData}
             title="Refresh Data"
-            className="p-2.5 rounded-full bg-white border border-curator-border text-curator-charcoal hover:text-curator-coral hover:border-curator-coral shadow-sm transition-all"
+            aria-label="Refresh Data"
+            className="p-2 sm:p-2.5 rounded-full bg-white border border-curator-border text-curator-charcoal hover:text-curator-coral shadow-xs transition-all flex-shrink-0"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Metric Cards Grid */}
+      {/* KPI Cards — Responsive Grid & Mobile Touch Cards */}
       {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <AdminCardSkeleton key={i} />
           ))}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
           {metrics.map((m, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-[2rem] p-5 border border-curator-border shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
+              className={`bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-5 border border-curator-border shadow-xs hover:shadow-sm transition-all flex flex-col justify-between ${
+                idx === 0 ? 'col-span-2 sm:col-span-1 bg-gradient-to-br from-white via-white to-curator-surface-peach/40' : ''
+              }`}
             >
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-curator-muted font-mono">
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-curator-muted font-mono">
                   {m.title}
                 </span>
-                <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${m.accent}`}>
-                  <m.icon className="w-4 h-4" />
+                <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-xl flex items-center justify-center ${m.accent}`}>
+                  <m.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </div>
               </div>
 
               <div>
-                <span className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal block">
+                <span className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-curator-charcoal block leading-tight">
                   {m.value}
                 </span>
-                <span className="text-[11px] text-curator-muted font-sans mt-0.5 block">
+                <span className="text-[10px] sm:text-[11px] text-curator-muted font-sans mt-0.5 block">
                   {m.subtitle}
                 </span>
               </div>
@@ -175,57 +186,62 @@ export const DashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Action Shortcuts */}
-      <div className="p-4 sm:p-5 rounded-[2rem] bg-gradient-to-r from-curator-surface-peach via-[#FAF5EE] to-curator-surface-peach border border-curator-border flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-curator-coral text-white flex items-center justify-center font-bold">
+      {/* Quick Action Shortcuts (Mobile touch grid) */}
+      <div className="p-4 sm:p-5 rounded-2xl sm:rounded-[2rem] bg-gradient-to-r from-curator-surface-peach via-[#FAF5EE] to-curator-surface-peach border border-curator-border space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="w-6 h-6 rounded-full bg-curator-coral text-white flex items-center justify-center font-bold text-xs">
             ✦
           </div>
-          <div>
-            <h4 className="font-serif text-sm font-bold text-curator-charcoal">
-              Quick CMS Management
-            </h4>
-            <p className="text-xs text-curator-muted font-sans">
-              Update hero slides, change prices, manage delivery fees, or add new photoshoot drops.
-            </p>
-          </div>
+          <h4 className="font-serif text-xs sm:text-sm font-bold text-curator-charcoal">
+            Quick Actions
+          </h4>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <Link
             to="/admin/products/new"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-curator-coral text-white text-xs font-bold shadow-sm hover:bg-curator-coral-hover transition-colors"
+            className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-curator-coral text-white text-xs font-bold shadow-xs hover:bg-curator-coral-hover transition-colors min-h-[44px]"
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-4 h-4" />
             <span>New Drop</span>
           </Link>
           <Link
-            to="/admin/content/hero"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-curator-border text-curator-charcoal text-xs font-semibold hover:border-curator-coral hover:text-curator-coral transition-colors"
+            to="/admin/orders"
+            className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-white border border-curator-border text-curator-charcoal text-xs font-semibold hover:border-curator-coral hover:text-curator-coral transition-colors min-h-[44px]"
           >
-            <span>Edit Hero Slides</span>
+            <ShoppingBag className="w-4 h-4 text-curator-coral" />
+            <span>Orders</span>
           </Link>
           <Link
-            to="/admin/settings/delivery"
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-white border border-curator-border text-curator-charcoal text-xs font-semibold hover:border-curator-coral hover:text-curator-coral transition-colors"
+            to="/admin/content/hero"
+            className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-white border border-curator-border text-curator-charcoal text-xs font-semibold hover:border-curator-coral hover:text-curator-coral transition-colors min-h-[44px]"
           >
-            <span>Delivery Fees</span>
+            <Sparkles className="w-4 h-4 text-curator-coral" />
+            <span>Hero Banner</span>
+          </Link>
+          <Link
+            to="/admin/content/homepage"
+            className="flex items-center justify-center gap-1.5 p-3 rounded-xl bg-white border border-curator-border text-curator-charcoal text-xs font-semibold hover:border-curator-coral hover:text-curator-coral transition-colors min-h-[44px]"
+          >
+            <Sliders className="w-4 h-4 text-curator-coral" />
+            <span>Sections</span>
           </Link>
         </div>
       </div>
 
-      {/* Main Grid: Recent Orders & Top Selling Products */}
+      {/* Main Grid: Recent Orders & Drops Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left: Recent Orders (8 cols) */}
-        <div className="lg:col-span-8 bg-white rounded-[2rem] border border-curator-border p-6 shadow-sm space-y-4">
+        
+        {/* LEFT: Recent Orders (8 cols) */}
+        <div className="lg:col-span-8 bg-white rounded-2xl sm:rounded-[2rem] border border-curator-border p-4 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-serif text-lg font-bold text-curator-charcoal">Recent Orders</h3>
-              <p className="text-xs text-curator-muted">Latest customer purchases across Bangladesh</p>
+              <h3 className="font-serif text-base sm:text-lg font-bold text-curator-charcoal">Recent Orders</h3>
+              <p className="text-[11px] sm:text-xs text-curator-muted">Latest purchases across Bangladesh</p>
             </div>
             <Link
               to="/admin/orders"
-              className="text-xs font-bold text-curator-coral hover:text-curator-coral-hover flex items-center gap-1"
+              className="text-xs font-bold text-curator-coral hover:text-curator-coral-hover flex items-center gap-1 min-h-[36px] items-center"
             >
               <span>View All</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -233,86 +249,136 @@ export const DashboardPage: React.FC = () => {
           </div>
 
           {filteredOrders.length === 0 ? (
-            <div className="text-center py-10 text-xs text-curator-muted">
+            <div className="text-center py-8 text-xs text-curator-muted">
               No orders found for this time period.
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-curator-border text-curator-muted font-mono uppercase tracking-wider text-[10px]">
-                    <th className="pb-3 font-semibold">Order</th>
-                    <th className="pb-3 font-semibold">Customer</th>
-                    <th className="pb-3 font-semibold">City</th>
-                    <th className="pb-3 font-semibold">Amount</th>
-                    <th className="pb-3 font-semibold">Status</th>
-                    <th className="pb-3 font-semibold text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-curator-border/60">
-                  {filteredOrders.slice(0, 5).map(order => (
-                    <tr key={order.id || order.order_number} className="hover:bg-curator-surface-peach/30 transition-colors">
-                      <td className="py-3 font-mono font-bold text-curator-charcoal">
+            <>
+              {/* MOBILE: Order Cards List (< 768px) */}
+              <div className="block md:hidden space-y-2.5">
+                {filteredOrders.slice(0, 5).map(order => (
+                  <Link
+                    key={order.id || order.order_number}
+                    to={`/admin/orders?highlight=${order.id || order.order_number}`}
+                    className="block p-3.5 rounded-2xl bg-[#FAF5EE]/60 border border-curator-border/80 hover:border-curator-coral transition-all active:scale-[0.99]"
+                  >
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="font-mono font-bold text-xs text-curator-charcoal">
                         {order.order_number}
-                      </td>
-                      <td className="py-3">
-                        <div className="font-semibold text-curator-charcoal">{order.customer_name}</div>
-                        <div className="text-[10px] text-curator-muted font-mono">{order.phone}</div>
-                      </td>
-                      <td className="py-3 text-curator-muted">
-                        {order.city}
-                      </td>
-                      <td className="py-3 font-mono font-bold text-curator-coral">
-                        ৳{order.total?.toLocaleString()}
-                      </td>
-                      <td className="py-3">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase font-mono ${
-                            order.status === 'delivered'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : order.status === 'confirmed' || order.status === 'processing'
-                              ? 'bg-blue-100 text-blue-800'
-                              : order.status === 'shipped'
-                              ? 'bg-purple-100 text-purple-800'
-                              : order.status === 'cancelled'
-                              ? 'bg-rose-100 text-rose-800'
-                              : 'bg-amber-100 text-amber-800'
-                          }`}
-                        >
-                          {order.status || 'pending'}
+                      </span>
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-bold uppercase font-mono ${
+                          order.status === 'delivered'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : order.status === 'confirmed' || order.status === 'processing'
+                            ? 'bg-blue-100 text-blue-800'
+                            : order.status === 'shipped'
+                            ? 'bg-purple-100 text-purple-800'
+                            : order.status === 'cancelled'
+                            ? 'bg-rose-100 text-rose-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {order.status || 'pending'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs">
+                      <div>
+                        <div className="font-bold text-curator-charcoal">{order.customer_name}</div>
+                        <div className="text-[10px] text-curator-muted font-mono">{order.city} • {order.phone}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-sm text-curator-coral block">
+                          ৳{order.total?.toLocaleString()}
                         </span>
-                      </td>
-                      <td className="py-3 text-right">
-                        <Link
-                          to={`/admin/orders?highlight=${order.id || order.order_number}`}
-                          className="text-xs font-bold text-curator-coral hover:underline"
-                        >
-                          Details
-                        </Link>
-                      </td>
+                        <span className="text-[10px] text-curator-muted">
+                          {order.created_at ? new Date(order.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Recent'}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+
+              {/* DESKTOP: Orders Table (>= 768px) */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-curator-border text-curator-muted font-mono uppercase tracking-wider text-[10px]">
+                      <th className="pb-3 font-semibold">Order</th>
+                      <th className="pb-3 font-semibold">Customer</th>
+                      <th className="pb-3 font-semibold">City</th>
+                      <th className="pb-3 font-semibold">Amount</th>
+                      <th className="pb-3 font-semibold">Status</th>
+                      <th className="pb-3 font-semibold text-right">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-curator-border/60">
+                    {filteredOrders.slice(0, 5).map(order => (
+                      <tr key={order.id || order.order_number} className="hover:bg-curator-surface-peach/30 transition-colors">
+                        <td className="py-3 font-mono font-bold text-curator-charcoal">
+                          {order.order_number}
+                        </td>
+                        <td className="py-3">
+                          <div className="font-semibold text-curator-charcoal">{order.customer_name}</div>
+                          <div className="text-[10px] text-curator-muted font-mono">{order.phone}</div>
+                        </td>
+                        <td className="py-3 text-curator-muted">
+                          {order.city}
+                        </td>
+                        <td className="py-3 font-mono font-bold text-curator-coral">
+                          ৳{order.total?.toLocaleString()}
+                        </td>
+                        <td className="py-3">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase font-mono ${
+                              order.status === 'delivered'
+                                ? 'bg-emerald-100 text-emerald-800'
+                                : order.status === 'confirmed' || order.status === 'processing'
+                                ? 'bg-blue-100 text-blue-800'
+                                : order.status === 'shipped'
+                                ? 'bg-purple-100 text-purple-800'
+                                : order.status === 'cancelled'
+                                ? 'bg-rose-100 text-rose-800'
+                                : 'bg-amber-100 text-amber-800'
+                            }`}
+                          >
+                            {order.status || 'pending'}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <Link
+                            to={`/admin/orders?highlight=${order.id || order.order_number}`}
+                            className="text-xs font-bold text-curator-coral hover:underline min-h-[32px] inline-flex items-center"
+                          >
+                            Details
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </div>
 
-        {/* Right: Products Inventory & Live Status (4 cols) */}
-        <div className="lg:col-span-4 bg-white rounded-[2rem] border border-curator-border p-6 shadow-sm space-y-4">
+        {/* RIGHT: Current Drops Inventory (4 cols) */}
+        <div className="lg:col-span-4 bg-white rounded-2xl sm:rounded-[2rem] border border-curator-border p-4 sm:p-6 shadow-xs space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="font-serif text-lg font-bold text-curator-charcoal">Current Drops</h3>
+            <h3 className="font-serif text-base sm:text-lg font-bold text-curator-charcoal">Active Drops</h3>
             <Link to="/admin/products" className="text-xs font-bold text-curator-coral hover:underline">
-              Manage
+              Manage All ({products.length})
             </Link>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-2.5">
             {products.slice(0, 4).map(prod => (
               <Link
                 key={prod.id}
                 to={`/admin/products/${prod.id}`}
-                className="flex items-center gap-3 p-2 rounded-2xl hover:bg-curator-surface-peach/50 transition-colors border border-transparent hover:border-curator-border"
+                className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-curator-surface-peach/50 transition-colors border border-curator-border/60"
               >
                 <img
                   src={prod.image_url}
@@ -332,19 +398,20 @@ export const DashboardPage: React.FC = () => {
                     </span>
                   </div>
                 </div>
-                <span className="text-xs text-curator-muted font-bold">Edit →</span>
+                <ChevronRight className="w-4 h-4 text-curator-muted" />
               </Link>
             ))}
           </div>
 
           <Link
             to="/admin/products/new"
-            className="w-full py-3 px-4 rounded-2xl border border-dashed border-curator-coral/60 text-curator-coral hover:bg-curator-coral-light font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors"
+            className="w-full py-3 px-4 rounded-2xl border border-dashed border-curator-coral/60 text-curator-coral hover:bg-curator-coral-light font-sans text-xs font-bold flex items-center justify-center gap-1.5 transition-colors min-h-[44px]"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Create New Product Drop</span>
           </Link>
         </div>
+
       </div>
     </div>
   );

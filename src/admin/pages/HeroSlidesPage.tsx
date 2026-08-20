@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Save, Upload, Sparkles, Eye, ArrowRight } from 'lucide-react';
+import { Plus, Trash2, Save, Upload, Sparkles, Eye, ArrowRight, X } from 'lucide-react';
 import { heroService, mediaService } from '../../lib/api';
 import { HeroSlide } from '../../types';
 import { useAdminToast } from '../context/AdminToastContext';
 import { AdminCardSkeleton } from '../components/AdminSkeleton';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const HeroSlidesPage: React.FC = () => {
   const [slides, setSlides] = useState<HeroSlide[]>([]);
   const [activeSlideIndex, setActiveSlideIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isMobilePreviewOpen, setIsMobilePreviewOpen] = useState(false);
   const { success, error } = useAdminToast();
 
   const loadSlides = async () => {
@@ -38,7 +41,7 @@ export const HeroSlidesPage: React.FC = () => {
 
   const handleUpdateSettings = (settingKey: string, val: string) => {
     const updated = [...slides];
-    const currSettings = updated[activeSlideIndex].settings || {};
+    const currSettings = updated[activeSlideIndex]?.settings || {};
     updated[activeSlideIndex] = {
       ...updated[activeSlideIndex],
       settings: { ...currSettings, [settingKey]: val }
@@ -55,7 +58,7 @@ export const HeroSlidesPage: React.FC = () => {
       image_url: '/assets/hero-banner-3models.jpg',
       cta_text: 'Direct Order Now',
       cta_link: '#order-form',
-      secondary_cta_text: 'View 4 Drops',
+      secondary_cta_text: 'View Collection',
       secondary_cta_link: '#products',
       sort_order: slides.length + 1,
       is_active: true,
@@ -68,32 +71,37 @@ export const HeroSlidesPage: React.FC = () => {
 
   const handleDeleteSlide = async (index: number) => {
     if (slides.length <= 1) {
-      error('At least one hero slide must remain');
+      error('Storefront needs at least 1 hero banner slide');
       return;
     }
-    const toDelete = slides[index];
-    if (toDelete.id) {
-      await heroService.deleteSlide(toDelete.id);
+    const targetSlide = slides[index];
+    if (targetSlide.id) {
+      await heroService.deleteSlide(targetSlide.id);
     }
-    const filtered = slides.filter((_, i) => i !== index);
-    setSlides(filtered);
-    setActiveSlideIndex(Math.max(0, index - 1));
+    const updated = slides.filter((_, i) => i !== index);
+    setSlides(updated);
+    setActiveSlideIndex(0);
     success('Slide deleted');
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+
+    setIsUploading(true);
     try {
-      const res = await mediaService.uploadFile(files[0], 'hero-images');
+      const file = files[0];
+      const res = await mediaService.uploadFile(file, 'hero-images');
       if (res.success && res.url) {
         handleUpdateSlide('image_url', res.url);
-        success('Hero banner uploaded successfully');
+        success('Hero banner uploaded to Supabase storage!');
       } else {
-        error(res.error || 'Failed to upload image');
+        error(res.error || 'Upload failed');
       }
-    } catch {
-      error('Failed to upload image');
+    } catch (err: any) {
+      error(err.message || 'Upload error');
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -103,7 +111,7 @@ export const HeroSlidesPage: React.FC = () => {
       for (const slide of slides) {
         await heroService.saveSlide(slide);
       }
-      success('All hero slides saved successfully! Live storefront updated.');
+      success('All Hero slides saved successfully!');
     } catch {
       error('Failed to save slides');
     } finally {
@@ -111,144 +119,184 @@ export const HeroSlidesPage: React.FC = () => {
     }
   };
 
-  if (isLoading) {
-    return <AdminCardSkeleton />;
-  }
-
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-20 lg:pb-12">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-curator-coral-light text-curator-coral text-xs font-semibold uppercase tracking-wider mb-1">
             <Sparkles className="w-3 h-3" />
-            <span>Hero Campaign CMS</span>
+            <span>Storefront Artwork</span>
           </div>
           <h1 className="font-serif text-2xl sm:text-3xl font-bold text-curator-charcoal">
-            Hero Slider & Campaign Banners
+            Hero Slides & Banners
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Mobile Preview Trigger */}
           <button
             type="button"
-            onClick={handleAddSlide}
-            className="flex items-center gap-1.5 px-5 py-2.5 rounded-full border border-curator-border bg-white text-xs font-bold text-curator-charcoal hover:text-curator-coral hover:border-curator-coral transition-all shadow-xs"
+            onClick={() => setIsMobilePreviewOpen(true)}
+            className="lg:hidden inline-flex items-center gap-1.5 py-2 px-3.5 rounded-full bg-white border border-curator-coral text-curator-coral text-xs font-bold shadow-xs active:scale-95 min-h-[40px]"
           >
-            <Plus className="w-4 h-4" />
-            <span>Add Slide</span>
+            <Eye className="w-3.5 h-3.5" />
+            <span>Preview</span>
           </button>
 
           <button
             type="button"
             onClick={handleSaveAll}
             disabled={isSaving}
-            className="flex items-center gap-2 px-7 py-2.5 rounded-full bg-curator-coral text-white text-xs font-bold uppercase tracking-wider shadow-lg hover:bg-curator-coral-hover hover:shadow-curator-glow active:scale-95 transition-all disabled:opacity-50"
+            className="inline-flex items-center gap-2 py-2.5 px-5 rounded-full bg-curator-coral text-white font-sans text-xs font-bold shadow-md hover:bg-curator-coral-hover active:scale-95 disabled:opacity-50 min-h-[44px]"
           >
             <Save className="w-4 h-4" />
-            <span>{isSaving ? 'Saving...' : 'Save All Slides'}</span>
+            <span>{isSaving ? 'Saving...' : 'Save Slides'}</span>
           </button>
         </div>
       </div>
 
-      {/* Slide Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2">
-        {slides.map((s, idx) => (
+      {/* Slide Selector Tabs (Horizontal Scrollable on Mobile) */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
+        {slides.map((slide, idx) => (
           <button
-            key={s.id || idx}
+            key={slide.id || idx}
+            type="button"
             onClick={() => setActiveSlideIndex(idx)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl border text-xs font-semibold transition-all whitespace-nowrap ${
+            className={`px-4 py-2.5 rounded-2xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-2 border min-h-[44px] ${
               activeSlideIndex === idx
-                ? 'bg-curator-coral text-white border-curator-coral shadow-sm font-bold'
+                ? 'bg-curator-charcoal text-white border-curator-charcoal shadow-sm'
                 : 'bg-white text-curator-charcoal border-curator-border hover:bg-curator-surface-peach'
             }`}
           >
-            <span>Slide {idx + 1}: {s.title || 'Untitled'}</span>
-            {!s.is_active && <span className="text-[10px] opacity-75">(Hidden)</span>}
+            <span>Slide #{idx + 1}</span>
+            <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono ${
+              activeSlideIndex === idx ? 'bg-white/20 text-white' : 'bg-curator-surface-peach text-curator-coral'
+            }`}>
+              {slide.badge || 'Banner'}
+            </span>
           </button>
         ))}
+
+        <button
+          type="button"
+          onClick={handleAddSlide}
+          className="px-4 py-2.5 rounded-2xl border border-dashed border-curator-coral text-curator-coral hover:bg-curator-coral-light text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap min-h-[44px]"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Add Slide</span>
+        </button>
       </div>
 
-      {currentSlide && (
+      {isLoading ? (
+        <AdminCardSkeleton />
+      ) : !currentSlide ? null : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* LEFT: Slide Configuration Form (7 cols) */}
-          <div className="lg:col-span-7 space-y-6">
+          {/* LEFT: Slide Editor Form (7 cols) */}
+          <div className="lg:col-span-7 space-y-5">
             
-            {/* Slide Details */}
-            <div className="bg-white rounded-[2rem] p-6 border border-curator-border shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-curator-border pb-2">
+            {/* Banner Media & Upload */}
+            <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-curator-border shadow-xs space-y-4">
+              <div className="flex items-center justify-between">
                 <h3 className="font-serif text-base font-bold text-curator-charcoal">
-                  Slide #{activeSlideIndex + 1} Content
+                  1. Hero Banner Image
                 </h3>
-                <button
-                  type="button"
-                  onClick={() => handleDeleteSlide(activeSlideIndex)}
-                  className="inline-flex items-center gap-1 text-xs font-bold text-rose-600 hover:underline"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Delete Slide</span>
-                </button>
+                {slides.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteSlide(activeSlideIndex)}
+                    className="text-xs font-bold text-rose-600 hover:underline flex items-center gap-1 min-h-[36px]"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Slide</span>
+                  </button>
+                )}
               </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                  Slide Headline
-                </label>
-                <input
-                  type="text"
-                  value={currentSlide.title}
-                  onChange={e => handleUpdateSlide('title', e.target.value)}
-                  placeholder="New Drop 2026"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-serif font-bold text-curator-charcoal focus:outline-none focus:border-curator-coral"
+              <div className="flex flex-col sm:flex-row items-center gap-4 p-4 rounded-2xl bg-[#FAF5EE]/60 border border-curator-border">
+                <img
+                  src={currentSlide.image_url}
+                  alt={currentSlide.title}
+                  className="w-full sm:w-44 h-32 object-cover rounded-xl bg-curator-bg border border-curator-border flex-shrink-0"
                 />
-              </div>
 
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                  Subtitle / Tagline
-                </label>
-                <input
-                  type="text"
-                  value={currentSlide.subtitle}
-                  onChange={e => handleUpdateSlide('subtitle', e.target.value)}
-                  placeholder="Style • Comfort • Quality • Affordability"
-                  className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-sans focus:outline-none focus:border-curator-coral"
-                />
+                <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+                  <h4 className="text-xs font-bold text-curator-charcoal">High-Resolution Photoshoot</h4>
+                  <p className="text-[11px] text-curator-muted">
+                    Recommended 1920×1080px landscape photo for responsive screens.
+                  </p>
+                  <label className="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-full bg-curator-coral text-white text-xs font-bold cursor-pointer hover:bg-curator-coral-hover min-h-[44px] w-full sm:w-auto">
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>{isUploading ? 'Uploading to Supabase...' : 'Upload New Banner'}</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
               </div>
+            </div>
+
+            {/* Headlines & Badge */}
+            <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-curator-border shadow-xs space-y-4">
+              <h3 className="font-serif text-base font-bold text-curator-charcoal">
+                2. Headline & Badges
+              </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                    Badge Label
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
+                    Hero Title
+                  </label>
+                  <input
+                    type="text"
+                    value={currentSlide.title}
+                    onChange={e => handleUpdateSlide('title', e.target.value)}
+                    placeholder="New Drop 2026"
+                    className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs font-serif font-bold text-curator-charcoal min-h-[48px]"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
+                    Floating Badge
                   </label>
                   <input
                     type="text"
                     value={currentSlide.badge || ''}
                     onChange={e => handleUpdateSlide('badge', e.target.value)}
-                    placeholder="New Collection / Best Seller"
-                    className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-mono focus:outline-none focus:border-curator-coral"
+                    placeholder="✦ New Drop"
+                    className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs min-h-[48px]"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                    Visibility
-                  </label>
-                  <select
-                    value={currentSlide.is_active ? 'active' : 'hidden'}
-                    onChange={e => handleUpdateSlide('is_active', e.target.value === 'active')}
-                    className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-white text-xs font-mono focus:outline-none focus:border-curator-coral"
-                  >
-                    <option value="active">Active (Visible in Carousel)</option>
-                    <option value="hidden">Hidden</option>
-                  </select>
                 </div>
               </div>
 
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
+                  Subtitle
+                </label>
+                <input
+                  type="text"
+                  value={currentSlide.subtitle || ''}
+                  onChange={e => handleUpdateSlide('subtitle', e.target.value)}
+                  placeholder="Style • Comfort • Quality • Affordability"
+                  className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs min-h-[48px]"
+                />
+              </div>
+            </div>
+
+            {/* CTA Buttons */}
+            <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-curator-border shadow-xs space-y-4">
+              <h3 className="font-serif text-base font-bold text-curator-charcoal">
+                3. Call-to-Action Buttons
+              </h3>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                     Primary CTA Text
                   </label>
                   <input
@@ -256,121 +304,68 @@ export const HeroSlidesPage: React.FC = () => {
                     value={currentSlide.cta_text || ''}
                     onChange={e => handleUpdateSlide('cta_text', e.target.value)}
                     placeholder="Direct Order Now"
-                    className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-medium focus:outline-none focus:border-curator-coral"
+                    className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs min-h-[48px]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                    Primary CTA Link
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
+                    Secondary CTA Text
                   </label>
                   <input
                     type="text"
-                    value={currentSlide.cta_link || ''}
-                    onChange={e => handleUpdateSlide('cta_link', e.target.value)}
-                    placeholder="#order-form"
-                    className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-mono focus:outline-none focus:border-curator-coral"
+                    value={currentSlide.secondary_cta_text || ''}
+                    onChange={e => handleUpdateSlide('secondary_cta_text', e.target.value)}
+                    placeholder="View Collection"
+                    className="w-full px-4 py-3 rounded-2xl border border-curator-border text-xs min-h-[48px]"
                   />
                 </div>
               </div>
             </div>
 
-            {/* Banner Image & Upload */}
-            <div className="bg-white rounded-[2rem] p-6 border border-curator-border shadow-sm space-y-4">
-              <div className="flex items-center justify-between border-b border-curator-border pb-2">
-                <h3 className="font-serif text-base font-bold text-curator-charcoal">
-                  Hero Campaign Artwork
-                </h3>
-                <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-curator-coral text-white text-xs font-semibold shadow-xs hover:bg-curator-coral-hover transition-colors">
-                  <Upload className="w-3.5 h-3.5" />
-                  <span>Upload Banner</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
-                  Banner Image URL
-                </label>
-                <input
-                  type="text"
-                  value={currentSlide.image_url}
-                  onChange={e => handleUpdateSlide('image_url', e.target.value)}
-                  className="w-full px-4 py-2.5 rounded-2xl border border-curator-border bg-[#FAF5EE]/40 text-xs font-mono focus:outline-none focus:border-curator-coral"
-                />
-              </div>
-
-              {/* Presets */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-1">
-                {[
-                  '/assets/hero-banner-3models.jpg',
-                  '/assets/model-magenta-banner.jpg',
-                  '/assets/model-black-banner.jpg'
-                ].map((img, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleUpdateSlide('image_url', img)}
-                    className={`w-20 h-14 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
-                      currentSlide.image_url === img
-                        ? 'border-curator-coral scale-105 shadow-md'
-                        : 'border-curator-border opacity-70 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img} alt="Banner" className="w-full h-full object-cover" />
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Organic Color Tokens */}
-            <div className="bg-white rounded-[2rem] p-6 border border-curator-border shadow-sm space-y-4">
-              <h3 className="font-serif text-base font-bold text-curator-charcoal border-b border-curator-border pb-2">
-                Organic Background Color Tokens
+            {/* Organic Blob Colors */}
+            <div className="bg-white rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 border border-curator-border shadow-xs space-y-4">
+              <h3 className="font-serif text-base font-bold text-curator-charcoal">
+                4. Background Organic Blobs
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                     Primary Blob Color
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 p-2 rounded-2xl border border-curator-border bg-[#FAF5EE]/40">
                     <input
                       type="color"
                       value={currentSlide.settings?.primaryBlobColor || '#DE4F3C'}
                       onChange={e => handleUpdateSettings('primaryBlobColor', e.target.value)}
-                      className="w-8 h-8 rounded-full cursor-pointer border-0 p-0 bg-transparent"
+                      className="w-9 h-9 rounded-xl border border-curator-border cursor-pointer flex-shrink-0"
                     />
                     <input
                       type="text"
                       value={currentSlide.settings?.primaryBlobColor || '#DE4F3C'}
                       onChange={e => handleUpdateSettings('primaryBlobColor', e.target.value)}
-                      className="flex-1 px-4 py-2 rounded-xl border border-curator-border bg-white text-xs font-mono uppercase focus:outline-none"
+                      className="flex-1 px-3 py-2 rounded-xl border border-curator-border bg-white text-xs font-mono uppercase"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-curator-charcoal mb-1.5">
                     Secondary Blob Color
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 p-2 rounded-2xl border border-curator-border bg-[#FAF5EE]/40">
                     <input
                       type="color"
                       value={currentSlide.settings?.secondaryBlobColor || '#F4A999'}
                       onChange={e => handleUpdateSettings('secondaryBlobColor', e.target.value)}
-                      className="w-8 h-8 rounded-full cursor-pointer border-0 p-0 bg-transparent"
+                      className="w-9 h-9 rounded-xl border border-curator-border cursor-pointer flex-shrink-0"
                     />
                     <input
                       type="text"
                       value={currentSlide.settings?.secondaryBlobColor || '#F4A999'}
                       onChange={e => handleUpdateSettings('secondaryBlobColor', e.target.value)}
-                      className="flex-1 px-4 py-2 rounded-xl border border-curator-border bg-white text-xs font-mono uppercase focus:outline-none"
+                      className="flex-1 px-3 py-2 rounded-xl border border-curator-border bg-white text-xs font-mono uppercase"
                     />
                   </div>
                 </div>
@@ -379,8 +374,8 @@ export const HeroSlidesPage: React.FC = () => {
 
           </div>
 
-          {/* RIGHT: Live Hero Preview (5 cols, sticky) */}
-          <div className="lg:col-span-5 sticky top-24 space-y-4">
+          {/* RIGHT: Desktop Sticky Live Preview (5 cols) */}
+          <div className="hidden lg:block lg:col-span-5 sticky top-24 space-y-3">
             <div className="flex items-center justify-between">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-curator-border text-xs font-bold text-curator-charcoal shadow-xs">
                 <Eye className="w-3.5 h-3.5 text-curator-coral" />
@@ -391,7 +386,6 @@ export const HeroSlidesPage: React.FC = () => {
               </span>
             </div>
 
-            {/* LIVE HERO BANNER CONTAINER */}
             <div className="rounded-[2.5rem] overflow-hidden border border-curator-border shadow-2xl bg-white p-3">
               <div className="relative aspect-[16/10.5] rounded-[2rem] overflow-hidden bg-[#FAF5EE]">
                 <img
@@ -400,7 +394,6 @@ export const HeroSlidesPage: React.FC = () => {
                   className="w-full h-full object-cover"
                 />
 
-                {/* Overlaid Badge */}
                 <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full shadow-md border border-curator-blush/40 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-curator-coral animate-ping" />
                   <span className="text-[11px] font-bold text-curator-charcoal font-serif">
@@ -409,7 +402,6 @@ export const HeroSlidesPage: React.FC = () => {
                 </div>
               </div>
 
-              {/* Title & Actions Bar */}
               <div className="p-4 space-y-2">
                 <h4 className="font-serif text-lg font-bold text-curator-charcoal">
                   {currentSlide.title}
@@ -432,6 +424,77 @@ export const HeroSlidesPage: React.FC = () => {
 
         </div>
       )}
+
+      {/* MOBILE FULL-SCREEN HERO PREVIEW MODAL */}
+      <AnimatePresence>
+        {isMobilePreviewOpen && currentSlide && (
+          <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobilePreviewOpen(false)}
+              className="fixed inset-0 bg-curator-charcoal/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              className="relative w-full max-h-[90vh] bg-[#FAF5EE] rounded-t-[2.5rem] p-6 z-10 space-y-4 overflow-y-auto pb-[max(1.5rem,env(safe-area-inset-bottom))]"
+            >
+              <div className="w-12 h-1.5 rounded-full bg-curator-muted/30 mx-auto -mt-2 mb-2" />
+              <div className="flex items-center justify-between border-b border-curator-border pb-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-curator-coral" />
+                  <h3 className="font-serif text-base font-bold text-curator-charcoal">Hero Banner Preview</h3>
+                </div>
+                <button
+                  onClick={() => setIsMobilePreviewOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white border border-curator-border flex items-center justify-center text-curator-muted"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="rounded-2xl overflow-hidden border border-curator-border bg-white p-3 shadow-md">
+                <div className="relative aspect-[16/11] rounded-xl overflow-hidden bg-curator-bg">
+                  <img
+                    src={currentSlide.image_url}
+                    alt={currentSlide.title}
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-3 right-3 bg-white/95 px-3 py-1 rounded-full shadow-sm text-[10px] font-bold text-curator-charcoal font-serif">
+                    {currentSlide.badge || 'New Drop'}
+                  </div>
+                </div>
+
+                <div className="p-3 space-y-1.5">
+                  <h4 className="font-serif text-base font-bold text-curator-charcoal">
+                    {currentSlide.title}
+                  </h4>
+                  <p className="text-xs text-curator-muted font-sans">
+                    {currentSlide.subtitle}
+                  </p>
+                  <div className="pt-2">
+                    <button className="w-full py-3 rounded-full bg-curator-coral text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-sm">
+                      <span>{currentSlide.cta_text || 'Direct Order Now'}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMobilePreviewOpen(false)}
+                className="w-full py-3 rounded-full bg-curator-charcoal text-white text-xs font-bold min-h-[48px]"
+              >
+                Back to Edit
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
